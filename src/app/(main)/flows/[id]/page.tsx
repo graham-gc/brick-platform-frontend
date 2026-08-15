@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Button, Space, message, Spin, Tag, Modal, Form, Input, Select } from 'antd';
+import { App as AntdApp, Card, Button, Space, Spin, Tag, Modal, Form, Input, Select } from 'antd';
 import { SaveOutlined, PlayCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -17,6 +17,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function FlowDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { message } = AntdApp.useApp();
   const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();

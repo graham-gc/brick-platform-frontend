@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, Button, Space, Modal, Form, Input, Select, Tag, message, Popconfirm, Upload, Radio } from 'antd';
+import { App as AntdApp, Table, Button, Space, Modal, Form, Input, Select, Tag, Popconfirm, Upload, Radio } from 'antd';
 import { PlusOutlined, SyncOutlined, DeleteOutlined, EditOutlined, UploadOutlined, InboxOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import * as api from '@/services/api';
@@ -25,6 +25,7 @@ const MAX_SWAGGER_FILE_SIZE = 5 * 1024 * 1024;
 type SwaggerSourceMode = 'url' | 'file';
 
 export default function MappingsPage() {
+  const { message } = AntdApp.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [editVisible, setEditVisible] = useState(false);
@@ -177,20 +178,26 @@ export default function MappingsPage() {
   });
 
   const columns: ColumnsType<AppSwaggerMapping> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+    { title: 'ID', dataIndex: 'id', key: 'id', responsive: ['md'] },
     { title: 'Application Name', dataIndex: 'appName', key: 'appName' },
-    { title: 'Environment', dataIndex: 'env', key: 'env', render: (env) => <Tag color="blue">{env}</Tag> },
-    { title: 'Version', dataIndex: 'versionTag', key: 'versionTag' },
-    { title: 'Swagger URL', dataIndex: 'swaggerUrl', key: 'swaggerUrl', ellipsis: true },
-    { title: 'Owner', dataIndex: 'owner', key: 'owner' },
-    { title: 'Actions', key: 'action', width: 200, render: (_, record) => (
-      <Space>
-        <Button size="small" icon={<SyncOutlined />} onClick={() => handleSync(record)}>Sync</Button>
-        <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>Edit</Button>
+    { title: 'Environment', dataIndex: 'env', key: 'env', responsive: ['sm'], render: (env) => <Tag color="blue">{env}</Tag> },
+    { title: 'Version', dataIndex: 'versionTag', key: 'versionTag', responsive: ['md'] },
+    { title: 'Swagger URL', dataIndex: 'swaggerUrl', key: 'swaggerUrl', ellipsis: true, responsive: ['lg'] },
+    { title: 'Owner', dataIndex: 'owner', key: 'owner', responsive: ['xl'] },
+    { title: 'Actions', key: 'action', render: (_, record) => (
+      <div className="mapping-actions">
+        <Button size="small" icon={<SyncOutlined />} title="Sync" aria-label="Sync" onClick={() => handleSync(record)}>
+          <span className="mapping-action-label">Sync</span>
+        </Button>
+        <Button size="small" icon={<EditOutlined />} title="Edit" aria-label="Edit" onClick={() => handleEdit(record)}>
+          <span className="mapping-action-label">Edit</span>
+        </Button>
         <Popconfirm title="Delete this mapping?" onConfirm={() => deleteMutation.mutate(record.id!)}>
-          <Button size="small" danger icon={<DeleteOutlined />}>Delete</Button>
+          <Button size="small" danger icon={<DeleteOutlined />} title="Delete" aria-label="Delete">
+            <span className="mapping-action-label">Delete</span>
+          </Button>
         </Popconfirm>
-      </Space>
+      </div>
     )},
   ];
 
@@ -412,6 +419,7 @@ export default function MappingsPage() {
         rowKey="id"
         loading={isLoading}
         pagination={false}
+        tableLayout="auto"
       />
 
       {/* Create/edit mapping modal */}

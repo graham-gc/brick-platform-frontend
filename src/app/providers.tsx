@@ -1,8 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
-import { ConfigProvider } from 'antd';
+import { App as AntdApp, ConfigProvider } from 'antd';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,7 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
         }}
       >
-        {children}
+        <AntdApp>{children}</AntdApp>
       </ConfigProvider>
     </QueryClientProvider>
   );

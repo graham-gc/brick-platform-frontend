@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, Button, Space, Modal, Form, Input, Select, Tag, message, Popconfirm, Card, Row, Col } from 'antd';
+import { App as AntdApp, Table, Button, Space, Modal, Form, Input, Select, Tag, Popconfirm, Card, Row, Col } from 'antd';
 import { PlusOutlined, PlayCircleOutlined, DeleteOutlined, EditOutlined, CopyOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
@@ -16,6 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function FlowsPage() {
+  const { message } = AntdApp.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [editVisible, setEditVisible] = useState(false);

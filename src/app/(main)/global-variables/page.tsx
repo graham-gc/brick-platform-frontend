@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, Button, Space, Modal, Form, Input, Select, Tag, message, Popconfirm, Card, Tabs } from 'antd';
+import { App as AntdApp, Table, Button, Space, Modal, Form, Input, Select, Tag, Popconfirm, Card, Tabs } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import * as api from '@/services/api';
@@ -29,6 +29,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function GlobalVariablesPage() {
+  const { message } = AntdApp.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [editVisible, setEditVisible] = useState(false);
