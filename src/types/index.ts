@@ -1,7 +1,7 @@
 // API Response types
 export interface ApiResponse<T> {
-  code: number;
-  message: string;
+  success: boolean;
+  message?: string | null;
   data: T;
 }
 
@@ -151,14 +151,30 @@ export interface ValidateParseRequest {
   includeEndpoints?: boolean;
 }
 
+export interface ValidateParseResult {
+  valid: boolean;
+  type: string;
+  swaggerContent?: string | null;
+}
+
 // SyncRequest
 export interface SyncRequest {
+  swaggerMappingId?: number;
   env: string;
+  appConfigId?: string;
   appRealName?: string;
   versionTag: string;
   swaggerUrl?: string;
   swaggerContent: string;
   operator?: string;
+  customHost?: string;
+  customBasePath?: string;
+}
+
+export interface SyncResult {
+  endpointCount: number;
+  mappingId: number;
+  versionTag?: string;
 }
 
 // FlowUpsertReq

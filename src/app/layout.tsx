@@ -4,8 +4,8 @@ import { Providers } from './providers';
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Brick 平台 - 接口自动化测试",
-  description: "接口自动化测试平台，支持Swagger文档管理、流程编排、HAR导入",
+  title: "Brick Platform - API Test Automation",
+  description: "API test automation platform with Swagger management, flow orchestration, and HAR import",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="en">
       <body>
         <AntdRegistry>
           <Providers>{children}</Providers>

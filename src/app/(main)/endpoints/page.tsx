@@ -47,31 +47,31 @@ export default function EndpointsPage() {
   const columns: ColumnsType<EndpointDefinition> = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
     {
-      title: '方法',
+      title: 'Method',
       dataIndex: 'httpMethod',
       key: 'httpMethod',
       width: 80,
       render: (method) => <Tag color={METHOD_COLORS[method] || 'default'}>{method}</Tag>,
     },
-    { title: '路径', dataIndex: 'endpointPath', key: 'endpointPath', ellipsis: true },
-    { title: '摘要', dataIndex: 'summary', key: 'summary', ellipsis: true },
-    { title: '标签', dataIndex: 'tags', key: 'tags', ellipsis: true },
+    { title: 'Path', dataIndex: 'endpointPath', key: 'endpointPath', ellipsis: true },
+    { title: 'Summary', dataIndex: 'summary', key: 'summary', ellipsis: true },
+    { title: 'Tags', dataIndex: 'tags', key: 'tags', ellipsis: true },
     {
-      title: '废弃',
+      title: 'Deprecated',
       dataIndex: 'deprecated',
       key: 'deprecated',
       width: 60,
-      render: (v) => (v ? <Tag color="red">是</Tag> : <Tag>否</Tag>),
+      render: (v) => (v ? <Tag color="red">Yes</Tag> : <Tag>No</Tag>),
     },
   ];
 
   return (
     <div>
-      <h2>接口定义</h2>
+      <h2>Endpoint Definitions</h2>
       <Card style={{ marginBottom: 16 }}>
         <Space wrap>
           <Select
-            placeholder="选择应用"
+            placeholder="Select an application"
             style={{ width: 300 }}
             onChange={handleSelectMapping}
             value={swaggerMappingId}
@@ -84,7 +84,7 @@ export default function EndpointsPage() {
             ))}
           </Select>
           <Select
-            placeholder="HTTP方法"
+            placeholder="HTTP method"
             style={{ width: 120 }}
             allowClear
             value={method}
@@ -95,7 +95,7 @@ export default function EndpointsPage() {
             ))}
           </Select>
           <Input.Search
-            placeholder="搜索路径/摘要"
+            placeholder="Search path or summary"
             style={{ width: 200 }}
             onSearch={(v) => { setKeyword(v); setPageNum(1); }}
           />
@@ -113,7 +113,7 @@ export default function EndpointsPage() {
           total: data?.total,
           showSizeChanger: true,
           showQuickJumper: true,
-          showTotal: (total) => `共 ${total} 条`,
+          showTotal: (total) => `${total} endpoints`,
           onChange: (p, ps) => { setPageNum(p); setPageSize(ps); },
         }}
       />

@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, Button, Space, Modal, Form, Input, Select, Tag, message, Popconfirm } from 'antd';
-import { PlusOutlined, SyncOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Modal, Form, Input, Select, Tag, message, Popconfirm, Upload, Radio } from 'antd';
+import { PlusOutlined, SyncOutlined, DeleteOutlined, EditOutlined, UploadOutlined, InboxOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import * as api from '@/services/api';
-import type { AppSwaggerMapping } from '@/types';
+import type { AppSwaggerMapping, ValidateParseRequest } from '@/types';
 
 const ENV_OPTIONS = [
-  { label: '开发环境', value: 'dev' },
-  { label: '测试环境', value: 'test' },
-  { label: 'UAT环境', value: 'uat' },
-  { label: '生产环境', value: 'pro' },
+  { label: 'Development', value: 'dev' },
+  { label: 'Test', value: 'test' },
+  { label: 'UAT', value: 'uat' },
+  { label: 'Production', value: 'pro' },
 ];
 
 const VERSION_OPTIONS = [
@@ -21,35 +21,98 @@ const VERSION_OPTIONS = [
   { label: 'test', value: 'test' },
 ];
 
+const MAX_SWAGGER_FILE_SIZE = 5 * 1024 * 1024;
+type SwaggerSourceMode = 'url' | 'file';
+
 export default function MappingsPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [editVisible, setEditVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AppSwaggerMapping | null>(null);
+  const [createSourceMode, setCreateSourceMode] = useState<SwaggerSourceMode>('url');
+  const [createSwaggerContent, setCreateSwaggerContent] = useState('');
+  const [createSwaggerFileName, setCreateSwaggerFileName] = useState('');
+  const [createSwaggerType, setCreateSwaggerType] = useState('');
+  const createValidationRequestId = useRef(0);
   const [syncVisible, setSyncVisible] = useState(false);
   const [syncForm] = Form.useForm();
   const [swaggerContent, setSwaggerContent] = useState('');
+  const [swaggerFileName, setSwaggerFileName] = useState('');
+  const [swaggerType, setSwaggerType] = useState('');
+  const [sourceMode, setSourceMode] = useState<SwaggerSourceMode>('url');
+  const validationRequestId = useRef(0);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['mappings'],
     queryFn: () => api.getMappings(),
   });
 
   const createMutation = useMutation({
-    mutationFn: api.createMapping,
-    onSuccess: () => {
-      message.success('创建成功');
+    mutationFn: async ({
+      mapping,
+      swaggerContent: validatedContent,
+    }: {
+      mapping: AppSwaggerMapping;
+      swaggerContent: string;
+    }) => {
+      const mappingId = await api.createMapping(mapping);
+      try {
+        return await api.syncEndpoints({
+          swaggerMappingId: mappingId,
+          env: mapping.env!,
+          appConfigId: mapping.appConfigId,
+          versionTag: mapping.versionTag!,
+          swaggerUrl: mapping.swaggerUrl,
+          swaggerContent: validatedContent,
+          operator: 'admin',
+        });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(
+          `Mapping ${mappingId} was created, but endpoint import failed: ${reason}`
+        );
+      }
+    },
+    onSuccess: (result) => {
+      message.success(`Mapping created. Imported ${result.endpointCount} endpoints.`);
       queryClient.invalidateQueries({ queryKey: ['mappings'] });
-      setEditVisible(false);
-      form.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['endpoints', result.mappingId] });
+      closeMappingModal();
     },
     onError: (err: Error) => message.error(err.message),
+  });
+
+  const createValidateMutation = useMutation({
+    mutationFn: ({ request }: { request: ValidateParseRequest; requestId: number }) =>
+      api.validateAndParse(request),
+    onMutate: () => {
+      setCreateSwaggerContent('');
+      setCreateSwaggerType('');
+    },
+    onSuccess: (data, variables) => {
+      if (variables.requestId !== createValidationRequestId.current) return;
+      if (data.valid && data.swaggerContent) {
+        setCreateSwaggerContent(data.swaggerContent);
+        setCreateSwaggerType(data.type);
+        message.success('Swagger document validated successfully');
+      } else {
+        setCreateSwaggerContent('');
+        setCreateSwaggerType('');
+        message.error(data.type || 'Invalid Swagger/OpenAPI document');
+      }
+    },
+    onError: (err: Error, variables) => {
+      if (variables.requestId !== createValidationRequestId.current) return;
+      setCreateSwaggerContent('');
+      setCreateSwaggerType('');
+      message.error(err.message);
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: api.updateMapping,
     onSuccess: () => {
-      message.success('更新成功');
+      message.success('Updated successfully');
       queryClient.invalidateQueries({ queryKey: ['mappings'] });
       setEditVisible(false);
       form.resetFields();
@@ -60,93 +123,286 @@ export default function MappingsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.deleteMapping(id, 'admin'),
     onSuccess: () => {
-      message.success('删除成功');
+      message.success('Deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['mappings'] });
     },
     onError: (err: Error) => message.error(err.message),
   });
 
   const validateMutation = useMutation({
-    mutationFn: api.validateAndParse,
-    onSuccess: (data) => {
-      if (data.valid) {
-        setSwaggerContent((data.swaggerContent as string) || '');
-        message.success('Swagger文档校验成功');
+    mutationFn: ({ request }: { request: ValidateParseRequest; requestId: number }) =>
+      api.validateAndParse(request),
+    onMutate: () => {
+      setSwaggerContent('');
+      setSwaggerType('');
+    },
+    onSuccess: (data, variables) => {
+      if (variables.requestId !== validationRequestId.current) return;
+      if (data.valid && data.swaggerContent) {
+        setSwaggerContent(data.swaggerContent);
+        setSwaggerType(data.type);
+        message.success('Swagger document validated successfully');
       } else {
-        message.error('无效的Swagger文档');
+        setSwaggerContent('');
+        setSwaggerType('');
+        message.error(data.type || 'Invalid Swagger/OpenAPI document');
       }
     },
-    onError: (err: Error) => message.error(err.message),
+    onError: (err: Error, variables) => {
+      if (variables.requestId !== validationRequestId.current) return;
+      setSwaggerContent('');
+      setSwaggerType('');
+      message.error(err.message);
+    },
   });
 
   const syncMutation = useMutation({
-    mutationFn: api.syncEndpoints,
-    onSuccess: () => {
-      message.success('同步成功');
-      setSyncVisible(false);
-      syncForm.resetFields();
-      setSwaggerContent('');
+    mutationFn: async (request: Parameters<typeof api.syncEndpoints>[0]) => {
+      if (editingRecord && request.swaggerUrl && request.swaggerUrl !== editingRecord.swaggerUrl) {
+        await api.updateMapping({
+          ...editingRecord,
+          swaggerUrl: request.swaggerUrl,
+          updateBy: 'admin',
+        });
+      }
+      return api.syncEndpoints(request);
+    },
+    onSuccess: (result) => {
+      message.success(`Sync completed. Imported ${result.endpointCount} endpoints.`);
+      queryClient.invalidateQueries({ queryKey: ['mappings'] });
+      queryClient.invalidateQueries({ queryKey: ['endpoints', result.mappingId] });
+      closeSyncModal();
     },
     onError: (err: Error) => message.error(err.message),
   });
 
   const columns: ColumnsType<AppSwaggerMapping> = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: '应用名称', dataIndex: 'appName', key: 'appName' },
-    { title: '环境', dataIndex: 'env', key: 'env', render: (env) => <Tag color="blue">{env}</Tag> },
-    { title: '版本', dataIndex: 'versionTag', key: 'versionTag' },
+    { title: 'Application Name', dataIndex: 'appName', key: 'appName' },
+    { title: 'Environment', dataIndex: 'env', key: 'env', render: (env) => <Tag color="blue">{env}</Tag> },
+    { title: 'Version', dataIndex: 'versionTag', key: 'versionTag' },
     { title: 'Swagger URL', dataIndex: 'swaggerUrl', key: 'swaggerUrl', ellipsis: true },
-    { title: '负责人', dataIndex: 'owner', key: 'owner' },
-    { title: '操作', key: 'action', width: 200, render: (_, record) => (
+    { title: 'Owner', dataIndex: 'owner', key: 'owner' },
+    { title: 'Actions', key: 'action', width: 200, render: (_, record) => (
       <Space>
-        <Button size="small" icon={<SyncOutlined />} onClick={() => handleSync(record)}>同步</Button>
-        <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
-        <Popconfirm title="确认删除？" onConfirm={() => deleteMutation.mutate(record.id!)}>
-          <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+        <Button size="small" icon={<SyncOutlined />} onClick={() => handleSync(record)}>Sync</Button>
+        <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>Edit</Button>
+        <Popconfirm title="Delete this mapping?" onConfirm={() => deleteMutation.mutate(record.id!)}>
+          <Button size="small" danger icon={<DeleteOutlined />}>Delete</Button>
         </Popconfirm>
       </Space>
     )},
   ];
 
+  const clearCreateValidatedSwagger = () => {
+    createValidationRequestId.current += 1;
+    setCreateSwaggerContent('');
+    setCreateSwaggerType('');
+  };
+
+  const validateCreateSwagger = (request: ValidateParseRequest) => {
+    const requestId = createValidationRequestId.current + 1;
+    createValidationRequestId.current = requestId;
+    createValidateMutation.mutate({ request, requestId });
+  };
+
+  const resetCreateImport = () => {
+    createValidationRequestId.current += 1;
+    setCreateSourceMode('url');
+    setCreateSwaggerContent('');
+    setCreateSwaggerFileName('');
+    setCreateSwaggerType('');
+  };
+
+  const openNewMappingModal = () => {
+    setEditingRecord(null);
+    form.resetFields();
+    resetCreateImport();
+    setEditVisible(true);
+  };
+
+  const closeMappingModal = () => {
+    setEditVisible(false);
+    form.resetFields();
+    resetCreateImport();
+  };
+
+  const handleCreateValidateUrl = (rawUrl: string) => {
+    const swaggerUrl = rawUrl.trim();
+    clearCreateValidatedSwagger();
+    if (!swaggerUrl) {
+      message.error('Enter a Swagger URL');
+      return;
+    }
+    validateCreateSwagger({ swaggerUrl });
+  };
+
+  const handleCreateSwaggerFile = async (file: File) => {
+    clearCreateValidatedSwagger();
+    const fileSelectionId = createValidationRequestId.current;
+    setCreateSwaggerFileName(file.name);
+
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      setCreateSwaggerFileName('');
+      message.error('Only Swagger/OpenAPI JSON files are currently supported');
+      return false;
+    }
+    if (file.size > MAX_SWAGGER_FILE_SIZE) {
+      setCreateSwaggerFileName('');
+      message.error('The Swagger file must not exceed 5 MB');
+      return false;
+    }
+
+    try {
+      const content = await file.text();
+      if (fileSelectionId !== createValidationRequestId.current) return false;
+      validateCreateSwagger({ swaggerFileContent: content });
+    } catch {
+      setCreateSwaggerFileName('');
+      message.error('Unable to read the Swagger file');
+    }
+    return false;
+  };
+
+  const handleMappingSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      if (editingRecord) {
+        updateMutation.mutate({ ...editingRecord, ...values });
+        return;
+      }
+
+      if (!createSwaggerContent) {
+        message.error('Validate the Swagger document before creating the mapping');
+        return;
+      }
+
+      createMutation.mutate({
+        mapping: {
+          ...values,
+          swaggerUrl: createSourceMode === 'url' ? values.swaggerUrl.trim() : undefined,
+          active: 1,
+          createBy: 'admin',
+        },
+        swaggerContent: createSwaggerContent,
+      });
+    } catch {
+      return;
+    }
+  };
+
   const handleEdit = (record: AppSwaggerMapping) => {
+    resetCreateImport();
     setEditingRecord(record);
     form.setFieldsValue(record);
     setEditVisible(true);
   };
 
   const handleSync = (record: AppSwaggerMapping) => {
+    validationRequestId.current += 1;
     setEditingRecord(record);
-    syncForm.setFieldsValue({ env: record.env, versionTag: record.versionTag });
+    syncForm.resetFields();
+    setSwaggerContent('');
+    setSwaggerFileName('');
+    setSwaggerType('');
+    setSourceMode(record.swaggerUrl ? 'url' : 'file');
+    syncForm.setFieldsValue({
+      swaggerUrl: record.swaggerUrl,
+      env: record.env,
+      versionTag: record.versionTag,
+    });
     setSyncVisible(true);
   };
 
-  const handleValidate = () => {
-    const url = syncForm.getFieldValue('swaggerUrl');
-    if (url) {
-      validateMutation.mutate({ swaggerUrl: url });
-    }
+  const clearValidatedSwagger = () => {
+    validationRequestId.current += 1;
+    setSwaggerContent('');
+    setSwaggerType('');
   };
 
-  const handleSyncSubmit = () => {
-    if (!swaggerContent) {
-      message.error('请先校验Swagger文档');
+  const validateSwagger = (request: ValidateParseRequest) => {
+    const requestId = validationRequestId.current + 1;
+    validationRequestId.current = requestId;
+    validateMutation.mutate({ request, requestId });
+  };
+
+  const closeSyncModal = () => {
+    validationRequestId.current += 1;
+    setSyncVisible(false);
+    syncForm.resetFields();
+    setSwaggerContent('');
+    setSwaggerFileName('');
+    setSwaggerType('');
+    setSourceMode('url');
+  };
+
+  const handleValidate = (rawUrl: string) => {
+    const swaggerUrl = rawUrl.trim();
+    clearValidatedSwagger();
+    if (!swaggerUrl) {
+      message.error('Enter a Swagger URL');
       return;
     }
-    const values = syncForm.getFieldsValue();
-    syncMutation.mutate({
-      env: values.env,
-      versionTag: values.versionTag,
-      swaggerContent,
-      operator: 'admin',
-    });
+    validateSwagger({ swaggerUrl });
+  };
+
+  const handleSwaggerFile = async (file: File) => {
+    clearValidatedSwagger();
+    const fileSelectionId = validationRequestId.current;
+    setSwaggerFileName(file.name);
+
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      setSwaggerFileName('');
+      message.error('Only Swagger/OpenAPI JSON files are currently supported');
+      return false;
+    }
+    if (file.size > MAX_SWAGGER_FILE_SIZE) {
+      setSwaggerFileName('');
+      message.error('The Swagger file must not exceed 5 MB');
+      return false;
+    }
+
+    try {
+      const content = await file.text();
+      if (fileSelectionId !== validationRequestId.current) return false;
+      validateSwagger({ swaggerFileContent: content });
+    } catch {
+      setSwaggerFileName('');
+      message.error('Unable to read the Swagger file');
+    }
+    return false;
+  };
+
+  const handleSyncSubmit = async () => {
+    if (!swaggerContent) {
+      message.error('Validate the Swagger document before syncing');
+      return;
+    }
+
+    try {
+      const values = await syncForm.validateFields();
+      syncMutation.mutate({
+        swaggerMappingId: editingRecord?.id,
+        env: values.env,
+        appConfigId: editingRecord?.appConfigId,
+        versionTag: values.versionTag,
+        swaggerUrl: sourceMode === 'url'
+          ? values.swaggerUrl.trim()
+          : editingRecord?.swaggerUrl,
+        swaggerContent,
+        operator: 'admin',
+      });
+    } catch {
+      return;
+    }
   };
 
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-        <h2>Swagger 映射管理</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingRecord(null); form.resetFields(); setEditVisible(true); }}>
-          新建映射
+        <h2>Swagger Mappings</h2>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openNewMappingModal}>
+          New Mapping
         </Button>
       </div>
 
@@ -158,68 +414,178 @@ export default function MappingsPage() {
         pagination={false}
       />
 
-      {/* 新建/编辑弹窗 */}
+      {/* Create/edit mapping modal */}
       <Modal
-        title={editingRecord ? '编辑映射' : '新建映射'}
+        title={editingRecord ? 'Edit Mapping' : 'New Mapping'}
         open={editVisible}
-        onCancel={() => { setEditVisible(false); form.resetFields(); }}
-        onOk={() => {
-          form.validateFields().then((values) => {
-            if (editingRecord) {
-              updateMutation.mutate({ ...editingRecord, ...values });
-            } else {
-              createMutation.mutate(values);
-            }
-          });
-        }}
+        onCancel={closeMappingModal}
+        onOk={() => void handleMappingSubmit()}
         confirmLoading={createMutation.isPending || updateMutation.isPending}
+        okButtonProps={{
+          disabled: !editingRecord
+            && (!createSwaggerContent || createValidateMutation.isPending),
+        }}
+        width={600}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="appName" label="应用名称" rules={[{ required: true }]}>
+          <Form.Item name="appName" label="Application Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
           <Form.Item name="appConfigId" label="AppConfigId" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="env" label="环境" rules={[{ required: true }]}>
+          <Form.Item name="env" label="Environment" rules={[{ required: true }]}>
             <Select options={ENV_OPTIONS} />
           </Form.Item>
-          <Form.Item name="versionTag" label="版本" rules={[{ required: true }]}>
+          <Form.Item name="versionTag" label="Version" rules={[{ required: true }]}>
             <Select options={VERSION_OPTIONS} />
           </Form.Item>
-          <Form.Item name="swaggerUrl" label="Swagger URL">
-            <Input />
-          </Form.Item>
-          <Form.Item name="owner" label="负责人">
+          {editingRecord ? (
+            <Form.Item name="swaggerUrl" label="Swagger URL">
+              <Input />
+            </Form.Item>
+          ) : (
+            <>
+              <Form.Item label="Import Method" required>
+                <Radio.Group
+                  value={createSourceMode}
+                  onChange={(event) => {
+                    setCreateSourceMode(event.target.value);
+                    clearCreateValidatedSwagger();
+                    setCreateSwaggerFileName('');
+                  }}
+                  optionType="button"
+                  buttonStyle="solid"
+                  options={[
+                    { label: 'Swagger URL', value: 'url' },
+                    { label: 'Swagger JSON', value: 'file' },
+                  ]}
+                />
+              </Form.Item>
+
+              {createSourceMode === 'url' ? (
+                <Form.Item
+                  name="swaggerUrl"
+                  label="Swagger URL"
+                  rules={[
+                    { required: true, message: 'Enter a Swagger URL' },
+                    { type: 'url', message: 'Enter a valid HTTP or HTTPS URL' },
+                  ]}
+                >
+                  <Input.Search
+                    enterButton="Test URL"
+                    onChange={clearCreateValidatedSwagger}
+                    onSearch={handleCreateValidateUrl}
+                    loading={createValidateMutation.isPending}
+                  />
+                </Form.Item>
+              ) : (
+                <Form.Item label="Swagger JSON File" required>
+                  <Upload.Dragger
+                    accept=".json,application/json"
+                    beforeUpload={handleCreateSwaggerFile}
+                    showUploadList={false}
+                    multiple={false}
+                    disabled={createValidateMutation.isPending}
+                  >
+                    <p className="ant-upload-drag-icon">
+                      <InboxOutlined />
+                    </p>
+                    <p className="ant-upload-text">
+                      Click or drag a Swagger JSON file to this area
+                    </p>
+                    <p className="ant-upload-hint">
+                      JSON files only, up to 5 MB. Validation starts automatically.
+                    </p>
+                  </Upload.Dragger>
+                  {createSwaggerFileName && (
+                    <div style={{ marginTop: 8 }}>{createSwaggerFileName}</div>
+                  )}
+                </Form.Item>
+              )}
+
+              {createSwaggerContent && (
+                <Tag color="success">Validation passed: {createSwaggerType}</Tag>
+              )}
+            </>
+          )}
+          <Form.Item name="owner" label="Owner">
             <Input />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* 同步弹窗 */}
+      {/* Endpoint sync modal */}
       <Modal
-        title="同步接口定义"
+        title="Sync Endpoint Definitions"
         open={syncVisible}
-        onCancel={() => { setSyncVisible(false); syncForm.resetFields(); setSwaggerContent(''); }}
-        onOk={handleSyncSubmit}
+        onCancel={closeSyncModal}
+        onOk={() => void handleSyncSubmit()}
         confirmLoading={syncMutation.isPending}
+        okButtonProps={{ disabled: !swaggerContent || validateMutation.isPending }}
       >
         <Form form={syncForm} layout="vertical">
-          <Form.Item name="swaggerUrl" label="Swagger URL">
-            <Input.Search
-              enterButton="校验"
-              onSearch={handleValidate}
-              loading={validateMutation.isPending}
+          <Form.Item label="Import Method">
+            <Radio.Group
+              value={sourceMode}
+              onChange={(event) => {
+                setSourceMode(event.target.value);
+                clearValidatedSwagger();
+                setSwaggerFileName('');
+              }}
+              optionType="button"
+              buttonStyle="solid"
+              options={[
+                { label: 'Swagger URL', value: 'url' },
+                { label: 'Local JSON File', value: 'file' },
+              ]}
             />
           </Form.Item>
-          <Form.Item name="env" label="环境" rules={[{ required: true }]}>
-            <Select options={ENV_OPTIONS} />
+
+          {sourceMode === 'url' ? (
+            <Form.Item
+              name="swaggerUrl"
+              label="Swagger URL"
+              rules={[
+                { required: true, message: 'Enter a Swagger URL' },
+                { type: 'url', message: 'Enter a valid HTTP or HTTPS URL' },
+              ]}
+            >
+              <Input.Search
+                enterButton="Validate"
+                onChange={clearValidatedSwagger}
+                onSearch={handleValidate}
+                loading={validateMutation.isPending}
+              />
+            </Form.Item>
+          ) : (
+            <Form.Item label="Swagger JSON File" required>
+              <Space>
+                <Upload
+                  accept=".json,application/json"
+                  beforeUpload={handleSwaggerFile}
+                  showUploadList={false}
+                  disabled={validateMutation.isPending}
+                >
+                  <Button icon={<UploadOutlined />} loading={validateMutation.isPending}>
+                    Choose File
+                  </Button>
+                </Upload>
+                {swaggerFileName && <span>{swaggerFileName}</span>}
+              </Space>
+            </Form.Item>
+          )}
+
+          <Form.Item name="env" label="Environment" rules={[{ required: true }]}>
+            <Select options={ENV_OPTIONS} disabled />
           </Form.Item>
-          <Form.Item name="versionTag" label="版本" rules={[{ required: true }]}>
-            <Select options={VERSION_OPTIONS} />
+          <Form.Item name="versionTag" label="Version" rules={[{ required: true }]}>
+            <Select options={VERSION_OPTIONS} disabled />
           </Form.Item>
         </Form>
-        {swaggerContent && <Tag color="success">文档校验通过</Tag>}
+        {swaggerContent && (
+          <Tag color="success">Validation passed: {swaggerType}</Tag>
+        )}
       </Modal>
     </div>
   );

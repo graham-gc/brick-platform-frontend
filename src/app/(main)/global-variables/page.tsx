@@ -44,7 +44,7 @@ export default function GlobalVariablesPage() {
     mutationFn: ({ variable }: { variable: BrickGlobalVariable }) =>
       api.createGlobalVariable(variable, 'admin'),
     onSuccess: () => {
-      message.success('创建成功');
+      message.success('Created successfully');
       queryClient.invalidateQueries({ queryKey: ['global-variables'] });
       setEditVisible(false);
       form.resetFields();
@@ -56,7 +56,7 @@ export default function GlobalVariablesPage() {
     mutationFn: ({ variable }: { variable: BrickGlobalVariable }) =>
       api.updateGlobalVariable(variable, 'admin'),
     onSuccess: () => {
-      message.success('更新成功');
+      message.success('Updated successfully');
       queryClient.invalidateQueries({ queryKey: ['global-variables'] });
       setEditVisible(false);
       form.resetFields();
@@ -67,7 +67,7 @@ export default function GlobalVariablesPage() {
   const deleteMutation = useMutation({
     mutationFn: api.deleteGlobalVariable,
     onSuccess: () => {
-      message.success('删除成功');
+      message.success('Deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['global-variables'] });
     },
     onError: (err: Error) => message.error(err.message),
@@ -75,17 +75,17 @@ export default function GlobalVariablesPage() {
 
   const columns: ColumnsType<BrickGlobalVariable> = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: '变量名', dataIndex: 'name', key: 'name' },
-    { title: '类型', dataIndex: 'type', key: 'type', render: (t) => <Tag color={TYPE_COLORS[t]}>{t}</Tag> },
-    { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-    { title: '语法', dataIndex: 'syntax', key: 'syntax', ellipsis: true },
-    { title: '数据类型', dataIndex: 'dataType', key: 'dataType' },
-    { title: '启用', dataIndex: 'isEnabled', key: 'isEnabled', render: (v) => v ? <Tag color="green">是</Tag> : <Tag>否</Tag> },
-    { title: '操作', key: 'action', width: 150, render: (_, record) => (
+    { title: 'Variable Name', dataIndex: 'name', key: 'name' },
+    { title: 'Type', dataIndex: 'type', key: 'type', render: (t) => <Tag color={TYPE_COLORS[t]}>{t}</Tag> },
+    { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
+    { title: 'Syntax', dataIndex: 'syntax', key: 'syntax', ellipsis: true },
+    { title: 'Data Type', dataIndex: 'dataType', key: 'dataType' },
+    { title: 'Enabled', dataIndex: 'isEnabled', key: 'isEnabled', render: (v) => v ? <Tag color="green">Yes</Tag> : <Tag>No</Tag> },
+    { title: 'Actions', key: 'action', width: 150, render: (_, record) => (
       <Space>
-        <Button size="small" type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
-        <Popconfirm title="确认删除？" onConfirm={() => deleteMutation.mutate(record.id!)}>
-          <Button size="small" danger type="link" icon={<DeleteOutlined />}>删除</Button>
+        <Button size="small" type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>Edit</Button>
+        <Popconfirm title="Delete this variable?" onConfirm={() => deleteMutation.mutate(record.id!)}>
+          <Button size="small" danger type="link" icon={<DeleteOutlined />}>Delete</Button>
         </Popconfirm>
       </Space>
     )},
@@ -100,9 +100,9 @@ export default function GlobalVariablesPage() {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-        <h2>全域变量</h2>
+        <h2>Global Variables</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingRecord(null); form.resetFields(); setEditVisible(true); }}>
-          新建变量
+          New Variable
         </Button>
       </div>
 
@@ -111,7 +111,7 @@ export default function GlobalVariablesPage() {
           activeKey={typeFilter || 'all'}
           onChange={(k) => setTypeFilter(k === 'all' ? undefined : k)}
           items={[
-            { key: 'all', label: '全部' },
+            { key: 'all', label: 'All' },
             ...TYPE_OPTIONS.map((t) => ({ key: t.value, label: t.label })),
           ]}
         />
@@ -126,7 +126,7 @@ export default function GlobalVariablesPage() {
       />
 
       <Modal
-        title={editingRecord ? '编辑变量' : '新建变量'}
+        title={editingRecord ? 'Edit Variable' : 'New Variable'}
         open={editVisible}
         onCancel={() => { setEditVisible(false); form.resetFields(); }}
         onOk={() => {
@@ -141,19 +141,19 @@ export default function GlobalVariablesPage() {
         confirmLoading={createMutation.isPending || updateMutation.isPending}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="变量名" rules={[{ required: true }]}>
+          <Form.Item name="name" label="Variable Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="type" label="类型" rules={[{ required: true }]}>
+          <Form.Item name="type" label="Type" rules={[{ required: true }]}>
             <Select options={TYPE_OPTIONS} />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label="Description">
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Form.Item name="syntax" label="语法模板">
-            <Input placeholder='如: ${{variableName}}' />
+          <Form.Item name="syntax" label="Syntax Template">
+            <Input placeholder='e.g. ${{variableName}}' />
           </Form.Item>
-          <Form.Item name="dataType" label="数据类型">
+          <Form.Item name="dataType" label="Data Type">
             <Select options={[
               { label: 'string', value: 'string' },
               { label: 'number', value: 'number' },

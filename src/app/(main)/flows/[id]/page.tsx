@@ -41,30 +41,30 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
   const [nodeForm] = Form.useForm();
   const [runLoading, setRunLoading] = useState(false);
 
-  // 加载流程详情
+  // Load flow details
   const { data: flowDetail, isLoading } = useQuery({
     queryKey: ['flow-detail', flowId],
     queryFn: () => api.getFlowDetail(flowId),
   });
 
-  // 加载接口列表
+  // Load endpoint definitions
   const { data: endpoints } = useQuery({
     queryKey: ['endpoints', flowDetail?.flow?.swaggerMappingId],
     queryFn: () => api.getAllEndpoints(flowDetail!.flow!.swaggerMappingId!),
     enabled: !!flowDetail?.flow?.swaggerMappingId,
   });
 
-  // 同步 store 数据到本地状态
+  // Synchronize store data with local visual state
   useEffect(() => {
     if (flowDetail?.nodes) {
       setFlowNodes(flowDetail.nodes);
       setFlowEdges(flowDetail.edges);
-      // 转换为可视化节点
+      // Convert persisted nodes into visual nodes
       const visualNodes = flowDetail.nodes.map((n, i) => ({
         id: n.id!,
         x: n.x || 100 + i * 200,
         y: n.y || 200,
-        label: n.endpointId ? `接口${n.endpointId}` : '节点',
+        label: n.endpointId ? `Endpoint ${n.endpointId}` : 'Node',
         method: (n as any).httpMethod,
         path: (n as any).endpointPath,
       }));
@@ -78,7 +78,7 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
     }
   }, [flowDetail, setFlowNodes, setFlowEdges]);
 
-  // 保存流程
+  // Save the flow
   const saveMutation = useMutation({
     mutationFn: () => {
       const updatedFlow = flowDetail?.flow;
@@ -90,29 +90,29 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
       });
     },
     onSuccess: () => {
-      message.success('保存成功');
+      message.success('Saved successfully');
       queryClient.invalidateQueries({ queryKey: ['flow-detail', flowId] });
     },
     onError: (err: Error) => message.error(err.message),
   });
 
-  // 运行流程
+  // Run the flow
   const runMutation = useMutation({
     mutationFn: () => api.runFlow(flowId, 'admin'),
     onSuccess: () => {
-      message.success('流程已启动');
+      message.success('Flow started');
     },
     onError: (err: Error) => message.error(err.message),
   });
 
-  // 添加节点
+  // Add a node
   const handleAddNode = (endpoint: EndpointDefinition) => {
     const newId = Date.now();
     const newNode = {
       id: newId,
       x: 100 + nodes.length * 200,
       y: 200,
-      label: endpoint.summary || endpoint.endpointPath || '未知节点',
+      label: endpoint.summary || endpoint.endpointPath || 'Unknown node',
       method: endpoint.httpMethod,
       path: endpoint.endpointPath,
     };
@@ -125,10 +125,10 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
       y: newNode.y,
       nodeType: 'http',
     });
-    message.success('节点已添加');
+    message.success('Node added');
   };
 
-  // 连接节点
+  // Connect nodes
   const handleConnect = (sourceId: number, targetId: number) => {
     const newEdgeId = Date.now();
     const newEdge = { id: newEdgeId, source: sourceId, target: targetId };
@@ -142,14 +142,14 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
     });
   };
 
-  // 删除节点
+  // Delete a node
   const handleDeleteNode = (nodeId: number) => {
     setNodes(nodes.filter((n) => n.id !== nodeId));
     setEdges(edges.filter((e) => e.source !== nodeId && e.target !== nodeId));
     removeFlowNode(nodeId);
   };
 
-  // 拖拽处理
+  // Drag-and-drop handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
@@ -173,26 +173,26 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div style={{ height: 'calc(100vh - 120px)' }}>
-      {/* 顶部工具栏 */}
+      {/* Top toolbar */}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>返回</Button>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>Back</Button>
           <h2 style={{ margin: 0 }}>{flowDetail?.flow?.name}</h2>
           <Tag color={STATUS_COLORS[flowDetail?.flow?.status || 'draft']}>{flowDetail?.flow?.status}</Tag>
         </Space>
         <Space>
           <Button icon={<PlayCircleOutlined />} onClick={() => runMutation.mutate()} loading={runMutation.isPending}>
-            运行
+            Run
           </Button>
           <Button type="primary" icon={<SaveOutlined />} onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>
-            保存
+            Save
           </Button>
         </Space>
       </div>
 
       <div style={{ display: 'flex', gap: 16, height: 'calc(100% - 60px)' }}>
-        {/* 左侧接口列表 */}
-        <Card title="接口列表" style={{ width: 300, overflow: 'auto' }} bodyStyle={{ padding: 0 }}>
+        {/* Endpoint list */}
+        <Card title="Endpoint List" style={{ width: 300, overflow: 'auto' }} bodyStyle={{ padding: 0 }}>
           <div style={{ padding: 8 }}>
             {endpoints?.map((ep) => (
               <div
@@ -217,9 +217,9 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </Card>
 
-        {/* 中间画布 */}
+        {/* Flow canvas */}
         <Card
-          title="流程画布"
+          title="Flow Canvas"
           style={{ flex: 1 }}
           bodyStyle={{
             position: 'relative',
@@ -231,7 +231,7 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
           onDrop={handleDrop}
         >
           <div style={{ position: 'relative', minWidth: 800, minHeight: 400 }}>
-            {/* 渲染连线 */}
+            {/* Render edges */}
             <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
               {edges.map((edge) => {
                 const sourceNode = nodes.find((n) => n.id === edge.source);
@@ -253,7 +253,7 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
               })}
             </svg>
 
-            {/* 渲染节点 */}
+            {/* Render nodes */}
             {nodes.map((node) => (
               <div
                 key={node.id}
@@ -291,7 +291,7 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
 
             {nodes.length === 0 && (
               <div style={{ textAlign: 'center', paddingTop: 100, color: '#999' }}>
-                从左侧拖拽接口到此处添加节点
+                Drag an endpoint from the left panel to add a node
               </div>
             )}
           </div>

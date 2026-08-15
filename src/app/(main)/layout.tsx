@@ -7,7 +7,6 @@ import {
   ApiOutlined,
   PartitionOutlined,
   PlayCircleOutlined,
-  SettingOutlined,
   DatabaseOutlined,
   HistoryOutlined,
   AppstoreOutlined,
@@ -16,12 +15,12 @@ import {
 const { Sider, Content } = Layout;
 
 const menuItems = [
-  { key: '/mappings', icon: <AppstoreOutlined />, label: <Link href="/mappings">Swagger映射</Link> },
-  { key: '/endpoints', icon: <ApiOutlined />, label: <Link href="/endpoints">接口定义</Link> },
-  { key: '/flows', icon: <PartitionOutlined />, label: <Link href="/flows">流程管理</Link> },
-  { key: '/test-suites', icon: <PlayCircleOutlined />, label: <Link href="/test-suites">测试集</Link> },
-  { key: '/global-variables', icon: <DatabaseOutlined />, label: <Link href="/global-variables">全域变量</Link> },
-  { key: '/runs', icon: <HistoryOutlined />, label: <Link href="/runs">执行历史</Link> },
+  { key: '/mappings', icon: <AppstoreOutlined />, label: <Link href="/mappings">Swagger Mappings</Link> },
+  { key: '/endpoints', icon: <ApiOutlined />, label: <Link href="/endpoints">Endpoint Definitions</Link> },
+  { key: '/flows', icon: <PartitionOutlined />, label: <Link href="/flows">Test Flows</Link> },
+  { key: '/test-suites', icon: <PlayCircleOutlined />, label: <Link href="/test-suites">Test Suites</Link> },
+  { key: '/global-variables', icon: <DatabaseOutlined />, label: <Link href="/global-variables">Global Variables</Link> },
+  { key: '/runs', icon: <HistoryOutlined />, label: <Link href="/runs">Run History</Link> },
 ];
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
@@ -32,7 +31,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <Layout style={{ minHeight: '100vh' }}>
       <Sider theme="light" width={200} style={{ borderRight: '1px solid #f0f0f0' }}>
         <div style={{ padding: '16px', fontSize: '18px', fontWeight: 'bold', textAlign: 'center' }}>
-          Brick 平台
+          Brick Platform
         </div>
         <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
       </Sider>

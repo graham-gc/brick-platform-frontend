@@ -37,7 +37,7 @@ export default function TestSuitesPage() {
     mutationFn: ({ suite, flowMappings }: { suite: BrickTestSuite; flowMappings: unknown[] }) =>
       api.createTestSuite(suite, flowMappings),
     onSuccess: () => {
-      message.success('创建成功');
+      message.success('Created successfully');
       queryClient.invalidateQueries({ queryKey: ['test-suites'] });
       setEditVisible(false);
       form.resetFields();
@@ -48,7 +48,7 @@ export default function TestSuitesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.deleteTestSuite(id),
     onSuccess: () => {
-      message.success('删除成功');
+      message.success('Deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['test-suites'] });
     },
     onError: (err: Error) => message.error(err.message),
@@ -57,22 +57,22 @@ export default function TestSuitesPage() {
   const runMutation = useMutation({
     mutationFn: (id: number) => api.runTestSuite(id, 'admin'),
     onSuccess: () => {
-      message.success('测试集已启动');
+      message.success('Test suite started');
     },
     onError: (err: Error) => message.error(err.message),
   });
 
   const columns: ColumnsType<BrickTestSuite> = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: '测试集名称', dataIndex: 'name', key: 'name' },
-    { title: '环境', dataIndex: 'env', key: 'env', render: (env) => <Tag color="blue">{env}</Tag> },
-    { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-    { title: '创建时间', dataIndex: 'createTime', key: 'createTime' },
-    { title: '操作', key: 'action', width: 200, render: (_, record) => (
+    { title: 'Test Suite Name', dataIndex: 'name', key: 'name' },
+    { title: 'Environment', dataIndex: 'env', key: 'env', render: (env) => <Tag color="blue">{env}</Tag> },
+    { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
+    { title: 'Created At', dataIndex: 'createTime', key: 'createTime' },
+    { title: 'Actions', key: 'action', width: 200, render: (_, record) => (
       <Space>
-        <Button size="small" type="link" icon={<PlayCircleOutlined />} onClick={() => runMutation.mutate(record.id!)}>运行</Button>
-        <Popconfirm title="确认删除？" onConfirm={() => deleteMutation.mutate(record.id!)}>
-          <Button size="small" danger type="link" icon={<DeleteOutlined />}>删除</Button>
+        <Button size="small" type="link" icon={<PlayCircleOutlined />} onClick={() => runMutation.mutate(record.id!)}>Run</Button>
+        <Popconfirm title="Delete this test suite?" onConfirm={() => deleteMutation.mutate(record.id!)}>
+          <Button size="small" danger type="link" icon={<DeleteOutlined />}>Delete</Button>
         </Popconfirm>
       </Space>
     )},
@@ -81,16 +81,16 @@ export default function TestSuitesPage() {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-        <h2>测试集管理</h2>
+        <h2>Test Suites</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingRecord(null); form.resetFields(); setEditVisible(true); }}>
-          新建测试集
+          New Test Suite
         </Button>
       </div>
 
       <Card style={{ marginBottom: 16 }}>
         <Space wrap>
           <Select
-            placeholder="选择应用"
+            placeholder="Select an application"
             style={{ width: 300 }}
             allowClear
             onChange={(v) => setSwaggerMappingId(v)}
@@ -120,7 +120,7 @@ export default function TestSuitesPage() {
       />
 
       <Modal
-        title="新建测试集"
+        title="New Test Suite"
         open={editVisible}
         onCancel={() => { setEditVisible(false); form.resetFields(); }}
         onOk={() => {
@@ -134,10 +134,10 @@ export default function TestSuitesPage() {
         confirmLoading={createMutation.isPending}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="测试集名称" rules={[{ required: true }]}>
+          <Form.Item name="name" label="Test Suite Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label="Description">
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>

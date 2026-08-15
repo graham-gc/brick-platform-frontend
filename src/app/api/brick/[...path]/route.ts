@@ -1,47 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:8080/api';
+const BACKEND_BASE_URL = (process.env.API_BASE_URL || 'http://localhost:8080/api/brick')
+  .replace(/\/+$/, '');
 
-export async function GET(
+type RouteParameters = {
+  params: Promise<{ path: string[] }>;
+};
+
+async function proxyRequest(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: RouteParameters,
+  method: 'GET' | 'POST'
 ) {
   const { path } = await params;
-  const url = new URL(request.url);
-  const queryString = url.search;
+  const incomingUrl = new URL(request.url);
+  const targetUrl = `${BACKEND_BASE_URL}/${path.join('/')}${incomingUrl.search}`;
 
   try {
-    const response = await fetch(`${API_BASE}/${path.join('/')}${queryString}`, {
-      method: 'GET',
+    const body = method === 'POST' ? await request.text() : undefined;
+    const response = await fetch(targetUrl, {
+      method,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': request.headers.get('content-type') || 'application/json',
+      },
+      body: body || undefined,
+      cache: 'no-store',
+    });
+    const responseBody = await response.text();
+
+    return new NextResponse(responseBody, {
+      status: response.status,
+      headers: {
+        'Content-Type': response.headers.get('content-type') || 'application/json',
       },
     });
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ code: 500, message: 'Proxy error', data: null }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { success: false, message: 'Unable to connect to the backend service', data: null },
+      { status: 502 }
+    );
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
-) {
-  const { path } = await params;
-  const body = await request.json();
+export async function GET(request: NextRequest, context: RouteParameters) {
+  return proxyRequest(request, context, 'GET');
+}
 
-  try {
-    const response = await fetch(`${API_BASE}/${path.join('/')}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ code: 500, message: 'Proxy error', data: null }, { status: 500 });
-  }
+export async function POST(request: NextRequest, context: RouteParameters) {
+  return proxyRequest(request, context, 'POST');
 }

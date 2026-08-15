@@ -9,24 +9,35 @@ import type {
   BrickGlobalVariable,
   PaginatedResponse,
   ValidateParseRequest,
+  ValidateParseResult,
   SyncRequest,
+  SyncResult,
   FlowUpsertReq,
 } from '@/types';
 
 const API_BASE = '/api/brick';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const { headers, ...requestOptions } = options || {};
   const res = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
+      ...headers,
     },
-    ...options,
+    ...requestOptions,
   });
-  const json = await res.json();
-  if (json.code !== 0 && json.code !== 200) {
-    throw new Error(json.message || 'Request failed');
+
+  let json: { success?: boolean; message?: string | null; data?: T };
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error(`Backend returned a non-JSON response (HTTP ${res.status})`);
   }
-  return json.data;
+
+  if (!res.ok || json.success !== true) {
+    throw new Error(json.message || `Request failed (HTTP ${res.status})`);
+  }
+  return json.data as T;
 }
 
 // ==================== Swagger Mapping APIs ====================
@@ -71,13 +82,13 @@ export const getVersions = (env: string, appConfigId: string) =>
 // ==================== Swagger Sync APIs ====================
 
 export const validateAndParse = (data: ValidateParseRequest) =>
-  request<Record<string, unknown>>(`${API_BASE}/validate-and-parse`, {
+  request<ValidateParseResult>(`${API_BASE}/validate-and-parse`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 
 export const syncEndpoints = (data: SyncRequest) =>
-  request<Record<string, unknown>>(`${API_BASE}/sync`, {
+  request<SyncResult>(`${API_BASE}/sync`, {
     method: 'POST',
     body: JSON.stringify(data),
   });

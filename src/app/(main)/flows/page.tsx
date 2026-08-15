@@ -37,7 +37,7 @@ export default function FlowsPage() {
   const createMutation = useMutation({
     mutationFn: api.createFlow,
     onSuccess: () => {
-      message.success('创建成功');
+      message.success('Created successfully');
       queryClient.invalidateQueries({ queryKey: ['flows'] });
       setEditVisible(false);
       form.resetFields();
@@ -48,7 +48,7 @@ export default function FlowsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.deleteFlow(id, 'admin'),
     onSuccess: () => {
-      message.success('删除成功');
+      message.success('Deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['flows'] });
     },
     onError: (err: Error) => message.error(err.message),
@@ -57,7 +57,7 @@ export default function FlowsPage() {
   const runMutation = useMutation({
     mutationFn: (id: number) => api.runFlow(id, 'admin'),
     onSuccess: () => {
-      message.success('流程已启动');
+      message.success('Flow started');
     },
     onError: (err: Error) => message.error(err.message),
   });
@@ -66,7 +66,7 @@ export default function FlowsPage() {
     mutationFn: ({ flowId, newName }: { flowId: number; newName: string }) =>
       api.copyFlow(flowId, newName),
     onSuccess: () => {
-      message.success('复制成功');
+      message.success('Copied successfully');
       queryClient.invalidateQueries({ queryKey: ['flows'] });
     },
     onError: (err: Error) => message.error(err.message),
@@ -74,20 +74,20 @@ export default function FlowsPage() {
 
   const columns: ColumnsType<BrickFlow> = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: '流程名称', dataIndex: 'name', key: 'name', render: (name, record) => (
+    { title: 'Flow Name', dataIndex: 'name', key: 'name', render: (name, record) => (
       <Link href={`/flows/${record.id}`}>{name}</Link>
     )},
-    { title: '环境', dataIndex: 'env', key: 'env', render: (env) => <Tag color="blue">{env}</Tag> },
-    { title: '状态', dataIndex: 'status', key: 'status', render: (s) => <Tag color={STATUS_COLORS[s]}>{s}</Tag> },
-    { title: '版本', dataIndex: 'version', key: 'version' },
-    { title: '创建时间', dataIndex: 'createTime', key: 'createTime' },
-    { title: '操作', key: 'action', width: 200, render: (_, record) => (
+    { title: 'Environment', dataIndex: 'env', key: 'env', render: (env) => <Tag color="blue">{env}</Tag> },
+    { title: 'Status', dataIndex: 'status', key: 'status', render: (s) => <Tag color={STATUS_COLORS[s]}>{s}</Tag> },
+    { title: 'Version', dataIndex: 'version', key: 'version' },
+    { title: 'Created At', dataIndex: 'createTime', key: 'createTime' },
+    { title: 'Actions', key: 'action', width: 200, render: (_, record) => (
       <Space>
-        <Button size="small" type="link" icon={<PlayCircleOutlined />} onClick={() => runMutation.mutate(record.id!)}>运行</Button>
-        <Button size="small" type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
-        <Button size="small" type="link" icon={<CopyOutlined />} onClick={() => handleCopy(record)}>复制</Button>
-        <Popconfirm title="确认删除？" onConfirm={() => deleteMutation.mutate(record.id!)}>
-          <Button size="small" danger type="link" icon={<DeleteOutlined />}>删除</Button>
+        <Button size="small" type="link" icon={<PlayCircleOutlined />} onClick={() => runMutation.mutate(record.id!)}>Run</Button>
+        <Button size="small" type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>Edit</Button>
+        <Button size="small" type="link" icon={<CopyOutlined />} onClick={() => handleCopy(record)}>Copy</Button>
+        <Popconfirm title="Delete this flow?" onConfirm={() => deleteMutation.mutate(record.id!)}>
+          <Button size="small" danger type="link" icon={<DeleteOutlined />}>Delete</Button>
         </Popconfirm>
       </Space>
     )},
@@ -106,16 +106,16 @@ export default function FlowsPage() {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-        <h2>流程管理</h2>
+        <h2>Test Flows</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingRecord(null); form.resetFields(); setEditVisible(true); }}>
-          新建流程
+          New Flow
         </Button>
       </div>
 
       <Card style={{ marginBottom: 16 }}>
         <Space wrap>
           <Select
-            placeholder="选择应用"
+            placeholder="Select an application"
             style={{ width: 300 }}
             allowClear
             onChange={(v) => setSwaggerMappingId(v)}
@@ -145,7 +145,7 @@ export default function FlowsPage() {
       />
 
       <Modal
-        title={editingRecord ? '编辑流程' : '新建流程'}
+        title={editingRecord ? 'Edit Flow' : 'New Flow'}
         open={editVisible}
         onCancel={() => { setEditVisible(false); form.resetFields(); }}
         onOk={() => {
@@ -157,10 +157,10 @@ export default function FlowsPage() {
         confirmLoading={createMutation.isPending}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="流程名称" rules={[{ required: true }]}>
+          <Form.Item name="name" label="Flow Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="swaggerMappingId" label="关联应用" rules={[{ required: true }]}>
+          <Form.Item name="swaggerMappingId" label="Application" rules={[{ required: true }]}>
             <Select>
               {mappings?.map((m) => (
                 <Select.Option key={m.id} value={m.id!}>
@@ -169,7 +169,7 @@ export default function FlowsPage() {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label="Description">
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>

@@ -2,11 +2,11 @@ import { create } from 'zustand';
 import type { AppSwaggerMapping, BrickFlow, BrickFlowNode, BrickFlowEdge } from '@/types';
 
 interface BrickState {
-  // 当前选中的 mapping
+  // Currently selected mapping
   currentMapping: AppSwaggerMapping | null;
   setCurrentMapping: (mapping: AppSwaggerMapping | null) => void;
 
-  // 流程设计器状态
+  // Flow designer state
   selectedFlow: BrickFlow | null;
   setSelectedFlow: (flow: BrickFlow | null) => void;
 
@@ -21,11 +21,11 @@ interface BrickState {
   addFlowEdge: (edge: BrickFlowEdge) => void;
   removeFlowEdge: (id: number) => void;
 
-  // 画布视口
+  // Canvas viewport
   viewport: { x: number; y: number; zoom: number };
   setViewport: (viewport: { x: number; y: number; zoom: number }) => void;
 
-  // 模态框
+  // Active modal
   activeModal: string | null;
   setActiveModal: (modal: string | null) => void;
 }

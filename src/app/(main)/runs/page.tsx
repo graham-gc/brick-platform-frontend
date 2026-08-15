@@ -57,29 +57,29 @@ export default function RunsPage() {
 
   const columns: ColumnsType<Record<string, unknown>> = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 80, render: (v) => String(v) },
-    { title: '流程ID', dataIndex: 'flowId', key: 'flowId', width: 80 },
-    { title: '状态', dataIndex: 'status', key: 'status', render: (s) => (
+    { title: 'Flow ID', dataIndex: 'flowId', key: 'flowId', width: 80 },
+    { title: 'Status', dataIndex: 'status', key: 'status', render: (s) => (
       <Tag color={STATUS_COLORS[s]} icon={s === 'running' ? <LoadingOutlined /> : s === 'success' ? <CheckCircleOutlined /> : s === 'failed' ? <CloseCircleOutlined /> : null}>
         {s}
       </Tag>
     )},
-    { title: '触发人', dataIndex: 'triggeredBy', key: 'triggeredBy' },
-    { title: '运行时长', dataIndex: 'durationMs', key: 'durationMs', render: (v) => v ? `${v}ms` : '-' },
-    { title: '开始时间', dataIndex: 'startTime', key: 'startTime' },
-    { title: '结束时间', dataIndex: 'endTime', key: 'endTime' },
-    { title: '操作', key: 'action', width: 80, render: (_, record) => (
-      <Button size="small" type="link" onClick={() => handleViewDetail(record.id as number)}>详情</Button>
+    { title: 'Triggered By', dataIndex: 'triggeredBy', key: 'triggeredBy' },
+    { title: 'Duration', dataIndex: 'durationMs', key: 'durationMs', render: (v) => v ? `${v}ms` : '-' },
+    { title: 'Started At', dataIndex: 'startTime', key: 'startTime' },
+    { title: 'Ended At', dataIndex: 'endTime', key: 'endTime' },
+    { title: 'Actions', key: 'action', width: 80, render: (_, record) => (
+      <Button size="small" type="link" onClick={() => handleViewDetail(record.id as number)}>Details</Button>
     )},
   ];
 
   return (
     <div>
-      <h2>执行历史</h2>
+      <h2>Run History</h2>
 
       <Card style={{ marginBottom: 16 }}>
         <Space wrap>
           <Select
-            placeholder="选择应用"
+            placeholder="Select an application"
             style={{ width: 300 }}
             allowClear
             onChange={handleSelectMapping}
@@ -92,22 +92,22 @@ export default function RunsPage() {
             ))}
           </Select>
           <Input.Search
-            placeholder="流程名称"
+            placeholder="Flow name"
             style={{ width: 200 }}
             onSearch={setFlowName}
           />
           <Select
-            placeholder="状态"
+            placeholder="Status"
             style={{ width: 120 }}
             allowClear
             value={status}
             onChange={setStatus}
           >
-            <Select.Option value="running">运行中</Select.Option>
-            <Select.Option value="success">成功</Select.Option>
-            <Select.Option value="failed">失败</Select.Option>
+            <Select.Option value="running">Running</Select.Option>
+            <Select.Option value="success">Success</Select.Option>
+            <Select.Option value="failed">Failed</Select.Option>
           </Select>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>刷新</Button>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
         </Space>
       </Card>
 
@@ -127,7 +127,7 @@ export default function RunsPage() {
       />
 
       <Drawer
-        title="执行详情"
+        title="Run Details"
         open={detailVisible}
         onClose={() => { setDetailVisible(false); setRunDetail(null); }}
       >
@@ -138,18 +138,18 @@ export default function RunsPage() {
         ) : runDetail ? (
           <>
             <Descriptions column={2} bordered size="small">
-              <Descriptions.Item label="流程ID">{String(runDetail.flowId ?? '-')}</Descriptions.Item>
-              <Descriptions.Item label="状态">
+              <Descriptions.Item label="Flow ID">{String(runDetail.flowId ?? '-')}</Descriptions.Item>
+              <Descriptions.Item label="Status">
                 <Tag color={STATUS_COLORS[runDetail.status as string]}>{runDetail.status as string}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="触发人">{String(runDetail.triggeredBy ?? '-')}</Descriptions.Item>
-              <Descriptions.Item label="运行时长">{runDetail.durationMs ? `${runDetail.durationMs}ms` : '-'}</Descriptions.Item>
-              <Descriptions.Item label="开始时间">{String(runDetail.startTime ?? '-')}</Descriptions.Item>
-              <Descriptions.Item label="结束时间">{String(runDetail.endTime ?? '-')}</Descriptions.Item>
+              <Descriptions.Item label="Triggered By">{String(runDetail.triggeredBy ?? '-')}</Descriptions.Item>
+              <Descriptions.Item label="Duration">{runDetail.durationMs ? `${runDetail.durationMs}ms` : '-'}</Descriptions.Item>
+              <Descriptions.Item label="Started At">{String(runDetail.startTime ?? '-')}</Descriptions.Item>
+              <Descriptions.Item label="Ended At">{String(runDetail.endTime ?? '-')}</Descriptions.Item>
             </Descriptions>
             {runDetail.errorMsg && (
               <div style={{ marginTop: 16 }}>
-                <h4>错误信息</h4>
+                <h4>Error Details</h4>
                 <pre style={{ background: '#f5f5f5', padding: 12, borderRadius: 4, overflow: 'auto' }}>
                   {runDetail.errorMsg as string}
                 </pre>
