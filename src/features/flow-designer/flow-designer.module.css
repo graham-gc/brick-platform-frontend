@@ -158,6 +158,134 @@
   pointer-events: none;
 }
 
+.contextList {
+  width: 100%;
+}
+
+.contextRow,
+.bindingRow {
+  display: grid;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.contextVariableCard {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.contextPrimaryRow {
+  display: grid;
+  align-items: end;
+  grid-template-columns: minmax(190px, 0.8fr) minmax(280px, 1.2fr) auto;
+  gap: 10px;
+}
+
+.filterBuilder {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 110px minmax(180px, 0.8fr);
+  gap: 10px;
+}
+
+.customExpressionRow {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.5fr) minmax(200px, 0.7fr);
+  gap: 10px;
+}
+
+.contextVariableCard :global(.ant-form-item),
+.contextPrimaryRow :global(.ant-form-item),
+.filterBuilder :global(.ant-form-item),
+.customExpressionRow :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.expressionPreview {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.expressionPreview :global(.ant-typography code) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextRow {
+  grid-template-columns: minmax(180px, 0.7fr) minmax(280px, 1.3fr) auto;
+}
+
+.bindingRow {
+  grid-template-columns: minmax(220px, 1.2fr) minmax(160px, 0.8fr) minmax(220px, 1fr) auto;
+}
+
+.contextRow :global(.ant-form-item),
+.bindingRow :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.variableOption {
+  min-width: 0;
+  padding: 3px 0;
+}
+
+.variableOptionHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.variableOptionHeader :global(.ant-tag) {
+  flex: none;
+  margin-inline-end: 0;
+}
+
+.variableOptionPath,
+.variableOptionResponse {
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.variableOptionPath {
+  margin-top: 4px;
+  color: #434343;
+}
+
+.variableOptionResponse {
+  margin-top: 2px;
+  color: #8c8c8c;
+}
+
+@media (max-width: 760px) {
+  .contextRow,
+  .bindingRow,
+  .contextPrimaryRow,
+  .filterBuilder,
+  .customExpressionRow,
+  .expressionPreview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .httpNode {
   position: relative;
   width: 230px;
@@ -190,20 +318,20 @@
   text-overflow: ellipsis;
 }
 
-.nodeLabel {
+.nodePath {
   overflow: hidden;
   color: #1f2937;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.nodePath {
+.nodeDescription {
   margin-top: 5px;
   overflow: hidden;
   color: #6b7280;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;

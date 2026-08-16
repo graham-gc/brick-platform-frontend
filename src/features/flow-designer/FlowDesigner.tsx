@@ -32,6 +32,7 @@ import type { BrickFlow, BrickFlowEdge, BrickFlowNode, EndpointDefinition } from
 import { EndpointPalette } from './EndpointPalette';
 import { HttpFlowNode } from './HttpFlowNode';
 import { NodeEditorModal } from './NodeEditorModal';
+import { parseResponseVariables, type AvailableFlowVariable } from './context-variables';
 import { createInitialNodeRequest } from './request-definition';
 import type { FlowCanvasEdge, FlowCanvasSavePayload, HttpCanvasNode } from './model';
 import styles from './flow-designer.module.css';
@@ -85,6 +86,35 @@ function allocateNegativeTimestamp(reference: { current: number }) {
     ? timestamp
     : Math.min(timestamp, reference.current - 1);
   return reference.current;
+}
+
+function ancestorNodeIds(nodeId: string, edges: FlowCanvasEdge[]) {
+  const parents = new Map<string, string[]>();
+  for (const edge of edges) {
+    parents.set(edge.target, [...(parents.get(edge.target) || []), edge.source]);
+  }
+  const result = new Set<string>();
+  const pending = [...(parents.get(nodeId) || [])];
+  while (pending.length) {
+    const current = pending.pop()!;
+    if (result.has(current)) continue;
+    result.add(current);
+    pending.push(...(parents.get(current) || []));
+  }
+  return result;
+}
+
+function variablesForNode(nodeId: string, nodes: HttpCanvasNode[], edges: FlowCanvasEdge[]) {
+  const ancestors = ancestorNodeIds(nodeId, edges);
+  return nodes.flatMap<AvailableFlowVariable>((node) => {
+    if (!ancestors.has(node.id)) return [];
+    return parseResponseVariables(node.data.flowNode).map((variable) => ({
+      ...variable,
+      sourceNodeId: node.id,
+      sourceNodeMethod: node.data.method,
+      sourceNodePath: node.data.path,
+    }));
+  });
 }
 
 function FlowDesignerCanvas({
@@ -470,6 +500,10 @@ function FlowDesignerCanvas({
           <NodeEditorModal
             key={editingNode.id}
             node={editingNode}
+            availableVariables={variablesForNode(editingNode.id, nodes, edges)}
+            reservedVariableNames={nodes
+              .filter((node) => node.id !== editingNode.id)
+              .flatMap((node) => parseResponseVariables(node.data.flowNode).map((variable) => variable.name))}
             onCancel={() => setEditingNodeId(undefined)}
             onSave={handleNodeEditorSave}
           />

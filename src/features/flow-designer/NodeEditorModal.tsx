@@ -1,15 +1,50 @@
 'use client';
 
-import { Alert, Form, Input, InputNumber, Modal, Select, Space, Tabs, Tag, Typography } from 'antd';
+import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { Alert, AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Tabs, Tag, TreeSelect, Typography } from 'antd';
 import type { Rule } from 'antd/es/form';
+import * as api from '@/services/api';
 import type { BrickFlowNode, EndpointParameterDefinition } from '@/types';
 import type { HttpCanvasNode } from './model';
+import {
+  arrayFilterFieldOptions,
+  hasArraySelection,
+  isJsonPathShapeValid,
+  parseRequestVariableBindings,
+  parseResponseVariables,
+  prepareResponseVariablesForSave,
+  requestBodyFieldTree,
+  responseFieldTree,
+  responseVariableExpression,
+  type AvailableFlowVariable,
+  type FlowRequestVariableBinding,
+  type FlowResponseVariable,
+  type FlowResponseSelectorMode,
+} from './context-variables';
 import {
   createInitialNodeRequest,
   parseRequestDefinition,
   prettyStoredJson,
 } from './request-definition';
 import styles from './flow-designer.module.css';
+
+const METHOD_COLORS: Record<string, string> = {
+  GET: 'green',
+  POST: 'blue',
+  PUT: 'orange',
+  DELETE: 'red',
+  PATCH: 'purple',
+};
+
+const FILTER_OPERATOR_OPTIONS = ['==', '!=', '>', '>=', '<', '<=']
+  .map((operator) => ({ value: operator, label: operator }));
+
+const CUSTOM_RESULT_MODE_OPTIONS = [
+  { value: 'SINGLE', label: 'Exactly one value' },
+  { value: 'FIRST', label: 'First matching value' },
+  { value: 'LIST', label: 'List of all values' },
+];
 
 interface NodeEditorValues {
   payloadJson?: string;
@@ -19,10 +54,14 @@ interface NodeEditorValues {
   timeoutSec: number;
   retries: number;
   joinMode: 'ALL' | 'ANY';
+  responseVariables: FlowResponseVariable[];
+  requestBindings: FlowRequestVariableBinding[];
 }
 
 interface NodeEditorModalProps {
   node: HttpCanvasNode;
+  availableVariables: AvailableFlowVariable[];
+  reservedVariableNames: string[];
   onCancel: () => void;
   onSave: (updates: Partial<BrickFlowNode>) => void;
 }
@@ -60,7 +99,13 @@ function ParameterSummary({ parameters }: { parameters?: EndpointParameterDefini
   );
 }
 
-export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps) {
+export function NodeEditorModal({
+  node,
+  availableVariables,
+  reservedVariableNames,
+  onCancel,
+  onSave,
+}: NodeEditorModalProps) {
   const [form] = Form.useForm<NodeEditorValues>();
   const endpoint = node.data.endpoint;
   const definition = parseRequestDefinition(endpoint);
@@ -78,7 +123,48 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
     timeoutSec: flowNode.timeoutSec ?? 30,
     retries: flowNode.retries ?? 0,
     joinMode: flowNode.joinMode ?? 'ALL',
+    responseVariables: parseResponseVariables(flowNode),
+    requestBindings: parseRequestVariableBindings(flowNode),
   };
+  const payloadJson = Form.useWatch('payloadJson', form) ?? initialValues.payloadJson;
+  const { data: endpointDetail, isLoading: responseSchemaLoading } = useQuery({
+    queryKey: ['endpoint-detail', endpoint?.id],
+    queryFn: () => api.getEndpointDetail(endpoint!.id!),
+    enabled: endpoint?.id != null,
+  });
+  const resolvedDefinition = endpointDetail?.resolvedRequestDefinition
+    || endpointDetail?.requestDefinition
+    || definition;
+  const responseFields = responseFieldTree(resolvedDefinition.responses);
+  const bodyFields = requestBodyFieldTree(payloadJson, resolvedDefinition.requestBody?.schema);
+  const queryFields = Array.from(new Set(
+    (resolvedDefinition.queryParameters || []).map((parameter) => parameter.name)
+  ));
+  const pathFields = Array.from(new Set(
+    (resolvedDefinition.pathParameters || []).map((parameter) => parameter.name)
+  ));
+  const requestAreaOptions = [
+    ...(resolvedDefinition.requestBody
+      ? [{ value: 'BODY' as const, label: 'Request Body' }]
+      : []),
+    ...(queryFields.length
+      ? [{ value: 'QUERY' as const, label: `Query Parameters (${queryFields.length})` }]
+      : []),
+    ...(pathFields.length
+      ? [{ value: 'PATH' as const, label: `Path Parameters (${pathFields.length})` }]
+      : []),
+  ];
+  const variableOptions = availableVariables.map((variable) => ({
+    value: variable.name,
+    label: variable.name,
+    searchText: [
+      variable.name,
+      variable.sourceNodeMethod,
+      variable.sourceNodePath,
+      variable.responsePath,
+    ].join(' '),
+    variable,
+  }));
 
   const parameterTab = (
     field: 'queryParamsJson' | 'pathVarsJson' | 'headersJson',
@@ -100,7 +186,7 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
   return (
     <Modal
       open
-      width={900}
+      width={1040}
       title={(
         <Space wrap>
           <span>Edit HTTP Node</span>
@@ -119,12 +205,16 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
             timeoutSec: values.timeoutSec,
             retries: values.retries,
             joinMode: values.joinMode,
+            responseVariablesJson: JSON.stringify(
+              prepareResponseVariablesForSave(values.responseVariables)
+            ),
+            requestVariableBindingsJson: JSON.stringify(values.requestBindings || []),
           });
         });
       }}
       destroyOnHidden
     >
-      <Form form={form} layout="vertical" initialValues={initialValues} preserve={false}>
+      <Form form={form} layout="vertical" initialValues={initialValues}>
         <Tabs
           items={[
             {
@@ -154,6 +244,390 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
             parameterTab('queryParamsJson', 'Query Parameters', definition.queryParameters),
             parameterTab('pathVarsJson', 'Path Parameters', definition.pathParameters),
             parameterTab('headersJson', 'Headers', definition.headers),
+            {
+              key: 'responseVariables',
+              label: 'Response Variables',
+              children: (
+                <Space orientation="vertical" size={12} className={styles.editorTabContent}>
+                  <Alert
+                    type="info"
+                    showIcon
+                    title="Create flow-scoped variables from this node's JSON response."
+                    description="Only downstream nodes connected to this node can use these variables."
+                  />
+                  {!responseSchemaLoading && responseFields.length === 0 && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      title="No response schema is available"
+                      description="Sync this Swagger mapping again after the response-schema importer is enabled."
+                    />
+                  )}
+                  <Form.List name="responseVariables">
+                    {(fields, { add, remove }) => (
+                      <Space orientation="vertical" size={10} className={styles.contextList}>
+                        {fields.map((field) => (
+                          <Form.Item key={field.key} noStyle shouldUpdate>
+                            {({ getFieldValue }) => {
+                              const variable = (getFieldValue(['responseVariables', field.name]) || {}) as FlowResponseVariable;
+                              const selectorMode = variable.selectorMode || 'DIRECT';
+                              const fieldPath = variable.fieldPath;
+                              const containsArray = hasArraySelection(fieldPath);
+                              const filterFields = arrayFilterFieldOptions(responseFields, fieldPath);
+                              const expression = responseVariableExpression(variable);
+                              const extractionOptions = [
+                                { value: 'DIRECT', label: 'Direct field' },
+                                ...(containsArray ? [
+                                  { value: 'INDEX', label: 'Array item by index' },
+                                  { value: 'FILTER_FIRST', label: 'First item matching a condition' },
+                                  { value: 'ALL', label: 'All matching items' },
+                                ] : []),
+                                { value: 'CUSTOM', label: 'Custom JSONPath' },
+                              ];
+
+                              return (
+                                <div className={styles.contextVariableCard}>
+                                  <div className={styles.contextPrimaryRow}>
+                                    <Form.Item
+                                      name={[field.name, 'name']}
+                                      label="Variable Name"
+                                      rules={[
+                                        { required: true, message: 'Enter a variable name' },
+                                        { pattern: /^[A-Za-z_][A-Za-z0-9_]*$/, message: 'Use letters, numbers and underscores' },
+                                        {
+                                          validator: async (_rule, value?: string) => {
+                                            if (value && reservedVariableNames.includes(value)) {
+                                              throw new Error(`Variable ${value} already exists in this flow`);
+                                            }
+                                            const names = (form.getFieldValue('responseVariables') || [])
+                                              .map((item: FlowResponseVariable) => item?.name)
+                                              .filter((name: string) => name === value);
+                                            if (value && names.length > 1) {
+                                              throw new Error(`Variable ${value} is duplicated`);
+                                            }
+                                          },
+                                        },
+                                      ]}
+                                    >
+                                      <Input placeholder="productId" />
+                                    </Form.Item>
+                                    <Form.Item
+                                      name={[field.name, 'selectorMode']}
+                                      label="Extraction Mode"
+                                      rules={[{ required: true }]}
+                                    >
+                                      <Select
+                                        options={extractionOptions}
+                                        onChange={(mode: FlowResponseSelectorMode) => {
+                                          if (mode === 'CUSTOM') {
+                                            form.setFieldValue(
+                                              ['responseVariables', field.name, 'responsePath'],
+                                              expression
+                                            );
+                                          }
+                                          if (mode === 'INDEX' && variable.arrayIndex == null) {
+                                            form.setFieldValue(
+                                              ['responseVariables', field.name, 'arrayIndex'],
+                                              0
+                                            );
+                                          }
+                                          if (mode === 'FILTER_FIRST' && !variable.filterOperator) {
+                                            form.setFieldValue(
+                                              ['responseVariables', field.name, 'filterOperator'],
+                                              '=='
+                                            );
+                                          }
+                                        }}
+                                      />
+                                    </Form.Item>
+                                    <Button
+                                      type="text"
+                                      danger
+                                      aria-label="Remove response variable"
+                                      icon={<MinusCircleOutlined />}
+                                      onClick={() => remove(field.name)}
+                                    />
+                                  </div>
+
+                                  {selectorMode !== 'CUSTOM' && (
+                                    <Form.Item
+                                      name={[field.name, 'fieldPath']}
+                                      label="Response Field"
+                                      rules={[{ required: true, message: 'Select a response field' }]}
+                                    >
+                                      <TreeSelect
+                                        treeData={responseFields}
+                                        treeDefaultExpandAll
+                                        showSearch
+                                        treeNodeFilterProp="title"
+                                        loading={responseSchemaLoading}
+                                        placeholder="Select from the response schema"
+                                        onChange={(value: string) => {
+                                          const mode = form.getFieldValue([
+                                            'responseVariables', field.name, 'selectorMode',
+                                          ]);
+                                          if (hasArraySelection(value) && (mode === 'DIRECT' || !mode)) {
+                                            form.setFieldValue(
+                                              ['responseVariables', field.name, 'selectorMode'],
+                                              'INDEX'
+                                            );
+                                            form.setFieldValue(
+                                              ['responseVariables', field.name, 'arrayIndex'],
+                                              0
+                                            );
+                                          } else if (!hasArraySelection(value) && mode !== 'CUSTOM') {
+                                            form.setFieldValue(
+                                              ['responseVariables', field.name, 'selectorMode'],
+                                              'DIRECT'
+                                            );
+                                          }
+                                        }}
+                                      />
+                                    </Form.Item>
+                                  )}
+
+                                  {selectorMode === 'INDEX' && (
+                                    <Form.Item
+                                      name={[field.name, 'arrayIndex']}
+                                      label="Array Index"
+                                      rules={[{ required: true, message: 'Enter an array index' }]}
+                                    >
+                                      <InputNumber min={0} precision={0} placeholder="0" />
+                                    </Form.Item>
+                                  )}
+
+                                  {selectorMode === 'FILTER_FIRST' && (
+                                    <div className={styles.filterBuilder}>
+                                      <Form.Item
+                                        name={[field.name, 'filterField']}
+                                        label="Condition Field"
+                                        rules={[{ required: true, message: 'Select a condition field' }]}
+                                      >
+                                        <AutoComplete
+                                          options={filterFields}
+                                          placeholder="stock"
+                                          filterOption={(input, option) => String(option?.value || '')
+                                            .toLowerCase().includes(input.toLowerCase())}
+                                        />
+                                      </Form.Item>
+                                      <Form.Item
+                                        name={[field.name, 'filterOperator']}
+                                        label="Operator"
+                                        rules={[{ required: true }]}
+                                      >
+                                        <Select options={FILTER_OPERATOR_OPTIONS} />
+                                      </Form.Item>
+                                      <Form.Item
+                                        name={[field.name, 'filterValue']}
+                                        label="Value"
+                                        rules={[{ required: true, message: 'Enter a comparison value' }]}
+                                      >
+                                        <Input placeholder="0 or models" />
+                                      </Form.Item>
+                                    </div>
+                                  )}
+
+                                  {selectorMode === 'CUSTOM' && (
+                                    <div className={styles.customExpressionRow}>
+                                      <Form.Item
+                                        name={[field.name, 'responsePath']}
+                                        label="JSONPath Expression"
+                                        rules={[
+                                          { required: true, message: 'Enter a JSONPath expression' },
+                                          {
+                                            validator: async (_rule, value?: string) => {
+                                              if (value && !isJsonPathShapeValid(value)) {
+                                                throw new Error('JSONPath must start with $ and contain balanced brackets');
+                                              }
+                                            },
+                                          },
+                                        ]}
+                                      >
+                                        <Input placeholder="$.data.items[?(@.stock > 0)].id" />
+                                      </Form.Item>
+                                      <Form.Item
+                                        name={[field.name, 'resultMode']}
+                                        label="Result Handling"
+                                        rules={[{ required: true }]}
+                                      >
+                                        <Select options={CUSTOM_RESULT_MODE_OPTIONS} />
+                                      </Form.Item>
+                                    </div>
+                                  )}
+
+                                  <div className={styles.expressionPreview}>
+                                    <Typography.Text type="secondary">JSONPath</Typography.Text>
+                                    <Typography.Text code copyable={!!expression}>
+                                      {expression || 'Complete the fields above to generate an expression'}
+                                    </Typography.Text>
+                                  </div>
+                                </div>
+                              );
+                            }}
+                          </Form.Item>
+                        ))}
+                        <Button
+                          type="dashed"
+                          icon={<PlusOutlined />}
+                          onClick={() => add({
+                            name: '',
+                            responsePath: '',
+                            fieldPath: undefined,
+                            selectorMode: 'DIRECT',
+                            resultMode: 'SINGLE',
+                            arrayIndex: 0,
+                            filterOperator: '==',
+                          })}
+                          disabled={responseFields.length === 0}
+                        >
+                          Add Response Variable
+                        </Button>
+                      </Space>
+                    )}
+                  </Form.List>
+                </Space>
+              ),
+            },
+            {
+              key: 'variableBindings',
+              label: 'Variable Bindings',
+              children: (
+                <Space orientation="vertical" size={12} className={styles.editorTabContent}>
+                  <Alert
+                    type="info"
+                    showIcon
+                    title="Assign a flow variable to a request field before this node executes."
+                  />
+                  {availableVariables.length === 0 && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      title="No upstream variables are available"
+                      description="Connect this node downstream from a node that exports a response variable."
+                    />
+                  )}
+                  {requestAreaOptions.length === 0 && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      title="This endpoint has no bindable request areas"
+                      description="Its Swagger definition contains no request body, query parameters, or path parameters."
+                    />
+                  )}
+                  <Form.List name="requestBindings">
+                    {(fields, { add, remove }) => (
+                      <Space orientation="vertical" size={10} className={styles.contextList}>
+                        {fields.map((field) => (
+                          <div className={styles.bindingRow} key={field.key}>
+                            <Form.Item
+                              name={[field.name, 'variableName']}
+                              label="Flow Variable"
+                              rules={[{ required: true, message: 'Select a variable' }]}
+                            >
+                              <Select
+                                showSearch
+                                optionFilterProp="searchText"
+                                options={variableOptions}
+                                optionRender={(option) => {
+                                  const variable = option.data.variable;
+                                  return (
+                                    <div className={styles.variableOption}>
+                                      <div className={styles.variableOptionHeader}>
+                                        <span>{variable.name}</span>
+                                        <Tag color={METHOD_COLORS[variable.sourceNodeMethod] || 'default'}>
+                                          {variable.sourceNodeMethod}
+                                        </Tag>
+                                      </div>
+                                      <div
+                                        className={styles.variableOptionPath}
+                                        title={variable.sourceNodePath}
+                                      >
+                                        {variable.sourceNodePath}
+                                      </div>
+                                      <div
+                                        className={styles.variableOptionResponse}
+                                        title={variable.responsePath}
+                                      >
+                                        Response: {variable.responsePath}
+                                      </div>
+                                    </div>
+                                  );
+                                }}
+                              />
+                            </Form.Item>
+                            <Form.Item
+                              name={[field.name, 'targetType']}
+                              label="Request Area"
+                              rules={[{ required: true, message: 'Select a request area' }]}
+                            >
+                              <Select
+                                options={requestAreaOptions}
+                                onChange={() => {
+                                  form.setFieldValue(
+                                    ['requestBindings', field.name, 'targetPath'],
+                                    undefined
+                                  );
+                                }}
+                              />
+                            </Form.Item>
+                            <Form.Item noStyle shouldUpdate>
+                              {({ getFieldValue }) => {
+                                const targetType = getFieldValue(['requestBindings', field.name, 'targetType']);
+                                const targetOptions = targetType === 'QUERY' ? queryFields : pathFields;
+                                return (
+                                  <Form.Item
+                                    name={[field.name, 'targetPath']}
+                                    label="Target Field"
+                                    rules={[{ required: true, message: 'Select a target field' }]}
+                                  >
+                                    {targetType === 'BODY' ? (
+                                      <TreeSelect
+                                        treeData={bodyFields}
+                                        treeDefaultExpandAll
+                                        showSearch
+                                        treeNodeFilterProp="title"
+                                        placeholder="Select a body field"
+                                      />
+                                    ) : (
+                                      <Select
+                                        disabled={!targetType}
+                                        options={targetOptions.map((name) => ({ value: name, label: name }))}
+                                        placeholder={targetType ? 'Select a request field' : 'Select an area first'}
+                                      />
+                                    )}
+                                  </Form.Item>
+                                );
+                              }}
+                            </Form.Item>
+                            <Button
+                              type="text"
+                              danger
+                              aria-label="Remove variable binding"
+                              icon={<MinusCircleOutlined />}
+                              onClick={() => remove(field.name)}
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          type="dashed"
+                          icon={<PlusOutlined />}
+                          onClick={() => add({
+                            variableName: undefined,
+                            targetType: requestAreaOptions.length === 1
+                              ? requestAreaOptions[0].value
+                              : undefined,
+                            targetPath: undefined,
+                          })}
+                          disabled={availableVariables.length === 0 || requestAreaOptions.length === 0}
+                        >
+                          Add Variable Binding
+                        </Button>
+                      </Space>
+                    )}
+                  </Form.List>
+                </Space>
+              ),
+            },
             {
               key: 'settings',
               label: 'Settings',

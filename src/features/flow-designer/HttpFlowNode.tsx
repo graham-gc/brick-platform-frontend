@@ -45,8 +45,10 @@ function HttpFlowNodeComponent({ id, data, selected }: NodeProps<HttpCanvasNode>
         <Tag color={METHOD_COLORS[data.method] || 'default'}>{data.method || 'HTTP'}</Tag>
         <span className={styles.nodeId}>#{id}</span>
       </div>
-      <div className={styles.nodeLabel} title={data.label}>{data.label}</div>
       <div className={styles.nodePath} title={data.path}>{data.path}</div>
+      {data.label && data.label !== data.path && (
+        <div className={styles.nodeDescription} title={data.label}>{data.label}</div>
+      )}
       <div className={styles.nodeHint}>Double-click to edit request</div>
 
       <Handle id="output-right" className={styles.connectionHandle} type="source" position={Position.Right} />

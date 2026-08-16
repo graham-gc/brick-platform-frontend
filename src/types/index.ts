@@ -70,6 +70,14 @@ export interface EndpointRequestBodyDefinition {
   example?: unknown;
 }
 
+export interface EndpointResponseDefinition {
+  statusCode: string;
+  description?: string;
+  contentType?: string;
+  schema?: Record<string, unknown>;
+  example?: unknown;
+}
+
 export interface EndpointRequestDefinition {
   headers?: EndpointParameterDefinition[];
   queryParameters?: EndpointParameterDefinition[];
@@ -77,6 +85,7 @@ export interface EndpointRequestDefinition {
   cookieParameters?: EndpointParameterDefinition[];
   formParameters?: EndpointParameterDefinition[];
   requestBody?: EndpointRequestBodyDefinition;
+  responses?: EndpointResponseDefinition[];
 }
 
 // BrickFlow
@@ -111,6 +120,8 @@ export interface BrickFlowNode {
   payloadJson?: string;
   queryParamsJson?: string;
   pathVarsJson?: string;
+  responseVariablesJson?: string;
+  requestVariableBindingsJson?: string;
   x?: number;
   y?: number;
   nodeType?: string;
