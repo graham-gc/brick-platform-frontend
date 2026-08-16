@@ -1,0 +1,86 @@
+.page {
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.headerTitle {
+  margin: 0 !important;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.summaryCard,
+.nodesCard,
+.detailCard {
+  margin-bottom: 16px;
+}
+
+.selectedRow :global(.ant-table-cell) {
+  background: #e6f4ff !important;
+}
+
+.requestUrl {
+  overflow-wrap: anywhere;
+}
+
+.codeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.codePanel {
+  min-width: 0;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.codePanelTitle {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e8e8e8;
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.codePanel pre {
+  min-height: 96px;
+  max-height: 440px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  background: #fff;
+}
+
+.assertionPlaceholder {
+  padding: 40px 16px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .codeGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

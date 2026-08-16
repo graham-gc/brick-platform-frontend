@@ -65,8 +65,13 @@ export default function FlowsPage() {
 
   const runMutation = useMutation({
     mutationFn: (id: number) => api.runFlow(id, 'admin'),
-    onSuccess: () => {
-      message.success('Flow started');
+    onSuccess: (run) => {
+      queryClient.invalidateQueries({ queryKey: ['runs'] });
+      if (run.status === 'success') {
+        message.success(`Flow completed in ${run.durationMs ?? 0} ms`);
+      } else {
+        message.error(run.errorMsg ? `Flow failed: ${run.errorMsg}` : 'Flow failed');
+      }
     },
     onError: (err: Error) => message.error(err.message),
   });

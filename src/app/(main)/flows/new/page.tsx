@@ -135,7 +135,7 @@ export default function NewFlowPage() {
               className={styles.setupAlert}
               type="error"
               showIcon
-              message="Unable to load flow setup data"
+              title="Unable to load flow setup data"
               description={loadError.message}
             />
           )}

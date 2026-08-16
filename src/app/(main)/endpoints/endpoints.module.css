@@ -1,0 +1,59 @@
+.clickableRow {
+  cursor: pointer;
+}
+
+.selectedRow :global(.ant-table-cell) {
+  background: #e6f4ff !important;
+}
+
+.drawerTitle {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.drawerPath {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.requestGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.jsonPanel {
+  min-width: 0;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.jsonPanelTitle {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e8e8e8;
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.jsonPanel pre {
+  min-height: 100px;
+  max-height: 360px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .requestGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -42,8 +42,12 @@ export interface EndpointDefinition {
   tags?: string;
   deprecated?: number;
   swaggerVersion?: string;
+  consumesTypes?: string;
   createsTypes?: string;
   producesTypes?: string;
+  swaggerUrl?: string;
+  docChecksum?: string;
+  isLightweight?: number;
   requestDefinitionJson?: string;
   isDeleted?: number;
   createTime?: string;
@@ -136,6 +140,33 @@ export interface BrickFlowRun {
   startTime?: string;
   endTime?: string;
   createTime?: string;
+}
+
+export interface BrickFlowRunNode {
+  id?: number;
+  runId?: number;
+  nodeId?: number;
+  endpointId?: number;
+  status?: string;
+  httpStatus?: number;
+  durationMs?: number;
+  startTime?: string;
+  endTime?: string;
+  requestMethod?: string;
+  requestUrl?: string;
+  requestHeaders?: string;
+  requestBody?: string;
+  requestQueryParams?: string;
+  requestPathParams?: string;
+  responseHeaders?: string;
+  responsePreview?: string;
+  fullResponse?: string;
+  responseSize?: number;
+  errorMsg?: string;
+  assertionTotalCount?: number;
+  assertionPassedCount?: number;
+  assertionFailedCount?: number;
+  assertionSummary?: string;
 }
 
 // BrickTestSuite

@@ -1,10 +1,12 @@
 import type {
   AppSwaggerMapping,
   EndpointDefinition,
+  EndpointRequestDefinition,
   BrickFlow,
   BrickFlowNode,
   BrickFlowEdge,
   BrickFlowRun,
+  BrickFlowRunNode,
   BrickTestSuite,
   BrickGlobalVariable,
   PaginatedResponse,
@@ -115,7 +117,11 @@ export const getAllEndpoints = (swaggerMappingId: number) =>
   );
 
 export const getEndpointDetail = (id: number) =>
-  request<Record<string, unknown>>(`${API_BASE}/endpoints/${id}`);
+  request<{
+    endpoint: EndpointDefinition;
+    requestDefinition?: EndpointRequestDefinition | null;
+    resolvedRequestDefinition?: EndpointRequestDefinition | null;
+  }>(`${API_BASE}/endpoints/${id}`);
 
 // ==================== Flow APIs ====================
 
@@ -175,7 +181,7 @@ export const runFlow = (id: number, operator?: string, overrideBaseUrl?: string)
   });
 
 export const getRunDetail = (runId: number) =>
-  request<{ run: BrickFlowRun; nodes: BrickFlowRun[] }>(
+  request<{ run: BrickFlowRun; nodes: BrickFlowRunNode[] }>(
     `${API_BASE}/flows/runs/${runId}`
   );
 

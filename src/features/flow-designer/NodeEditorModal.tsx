@@ -44,7 +44,7 @@ function jsonRule(label: string, objectOnly = false): Rule {
 
 function ParameterSummary({ parameters }: { parameters?: EndpointParameterDefinition[] }) {
   if (!parameters?.length) {
-    return <Alert type="info" showIcon message="This endpoint does not define any parameters here." />;
+    return <Alert type="info" showIcon title="This endpoint does not define any parameters here." />;
   }
   return (
     <div className={styles.parameterSummary}>
@@ -86,7 +86,7 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
     key: field,
     label,
     children: (
-      <Space direction="vertical" size={12} className={styles.editorTabContent}>
+      <Space orientation="vertical" size={12} className={styles.editorTabContent}>
         <ParameterSummary parameters={parameters} />
         <Form.Item name={field} rules={[jsonRule(label, true)]}>
           <Input.TextArea className={styles.jsonEditor} rows={13} spellCheck={false} />
@@ -128,14 +128,14 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
               key: 'body',
               label: 'Request Body',
               children: (
-                <Space direction="vertical" size={12} className={styles.editorTabContent}>
+                <Space orientation="vertical" size={12} className={styles.editorTabContent}>
                   {definition.requestBody ? (
                     <Space wrap>
                       <Tag color="blue">{definition.requestBody.contentType || 'unknown content type'}</Tag>
                       {definition.requestBody.required && <Tag color="red">required</Tag>}
                     </Space>
                   ) : (
-                    <Alert type="info" showIcon message="This endpoint does not define a request body." />
+                    <Alert type="info" showIcon title="This endpoint does not define a request body." />
                   )}
                   <Form.Item name="payloadJson" rules={[jsonRule('Request Body')]}>
                     <Input.TextArea
