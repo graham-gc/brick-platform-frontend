@@ -6,6 +6,7 @@ import { App as AntdApp, Button, Result, Spin } from 'antd';
 import { useRouter } from 'next/navigation';
 import * as api from '@/services/api';
 import { FlowDesigner } from '@/features/flow-designer/FlowDesigner';
+import { RunResultDrawer } from '@/features/run-result/RunResultDrawer';
 import type { FlowCanvasSavePayload } from '@/features/flow-designer/model';
 
 export default function FlowDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +16,7 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
   const queryClient = useQueryClient();
   const flowId = Number(id);
   const [designerRevision, setDesignerRevision] = useState(0);
+  const [resultRunId, setResultRunId] = useState<number>();
 
   const { data: flowDetail, isLoading: flowLoading, error: flowError } = useQuery({
     queryKey: ['flow-detail', flowId],
@@ -56,10 +58,15 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
     mutationFn: () => api.runFlow(flowId, 'admin'),
     onSuccess: (run) => {
       queryClient.invalidateQueries({ queryKey: ['runs'] });
+      if (run.id == null) {
+        message.error('The backend completed the run without returning its ID');
+        return;
+      }
+      setResultRunId(run.id);
       if (run.status === 'success') {
         message.success(`Flow completed in ${run.durationMs ?? 0} ms`);
       } else {
-        message.error(run.errorMsg ? `Flow failed: ${run.errorMsg}` : 'Flow failed');
+        message.warning('Flow completed with failures');
       }
     },
     onError: (error: Error) => message.error(error.message),
@@ -100,17 +107,26 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <FlowDesigner
-      key={`${flowId}-${designerRevision}`}
-      flow={flowDetail.flow}
-      persistedNodes={flowDetail.nodes || []}
-      persistedEdges={flowDetail.edges || []}
-      endpoints={endpoints || []}
-      saving={saveMutation.isPending}
-      running={runMutation.isPending}
-      onBack={() => router.back()}
-      onRun={() => runMutation.mutate()}
-      onSave={(payload) => saveMutation.mutateAsync(payload).then(() => undefined)}
-    />
+    <>
+      <FlowDesigner
+        key={`${flowId}-${designerRevision}`}
+        flow={flowDetail.flow}
+        persistedNodes={flowDetail.nodes || []}
+        persistedEdges={flowDetail.edges || []}
+        endpoints={endpoints || []}
+        saving={saveMutation.isPending}
+        running={runMutation.isPending}
+        onBack={() => router.back()}
+        onRun={() => runMutation.mutate()}
+        onSave={(payload) => saveMutation.mutateAsync(payload).then(() => undefined)}
+      />
+      <RunResultDrawer
+        open={resultRunId != null}
+        runId={resultRunId}
+        rerunning={runMutation.isPending}
+        onClose={() => setResultRunId(undefined)}
+        onRunAgain={() => runMutation.mutate()}
+      />
+    </>
   );
 }

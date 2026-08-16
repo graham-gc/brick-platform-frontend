@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Form, Input, InputNumber, Modal, Space, Tabs, Tag, Typography } from 'antd';
+import { Alert, Form, Input, InputNumber, Modal, Select, Space, Tabs, Tag, Typography } from 'antd';
 import type { Rule } from 'antd/es/form';
 import type { BrickFlowNode, EndpointParameterDefinition } from '@/types';
 import type { HttpCanvasNode } from './model';
@@ -18,6 +18,7 @@ interface NodeEditorValues {
   headersJson: string;
   timeoutSec: number;
   retries: number;
+  joinMode: 'ALL' | 'ANY';
 }
 
 interface NodeEditorModalProps {
@@ -76,6 +77,7 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
     headersJson: prettyStoredJson(flowNode.headersJson, JSON.parse(defaults.headersJson || '{}')),
     timeoutSec: flowNode.timeoutSec ?? 30,
     retries: flowNode.retries ?? 0,
+    joinMode: flowNode.joinMode ?? 'ALL',
   };
 
   const parameterTab = (
@@ -116,6 +118,7 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
             headersJson: values.headersJson,
             timeoutSec: values.timeoutSec,
             retries: values.retries,
+            joinMode: values.joinMode,
           });
         });
       }}
@@ -161,6 +164,19 @@ export function NodeEditorModal({ node, onCancel, onSave }: NodeEditorModalProps
                   </Form.Item>
                   <Form.Item name="retries" label="Retries" rules={[{ required: true }]}>
                     <InputNumber min={0} max={10} precision={0} />
+                  </Form.Item>
+                  <Form.Item
+                    name="joinMode"
+                    label="Incoming Branches"
+                    rules={[{ required: true }]}
+                    tooltip="Controls when this node can run if it has multiple incoming edges."
+                  >
+                    <Select
+                      options={[
+                        { value: 'ALL', label: 'Wait for all successful branches (ALL)' },
+                        { value: 'ANY', label: 'Run after any successful branch (ANY)' },
+                      ]}
+                    />
                   </Form.Item>
                 </div>
               ),

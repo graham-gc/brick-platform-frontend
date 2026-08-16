@@ -38,7 +38,8 @@ function HttpFlowNodeComponent({ id, data, selected }: NodeProps<HttpCanvasNode>
         </Button>
       </NodeToolbar>
 
-      <Handle className={styles.targetHandle} type="target" position={Position.Left} />
+      <Handle id="input-top" className={styles.connectionHandle} type="source" position={Position.Top} />
+      <Handle id="input-left" className={styles.connectionHandle} type="source" position={Position.Left} />
 
       <div className={styles.nodeHeader}>
         <Tag color={METHOD_COLORS[data.method] || 'default'}>{data.method || 'HTTP'}</Tag>
@@ -48,7 +49,9 @@ function HttpFlowNodeComponent({ id, data, selected }: NodeProps<HttpCanvasNode>
       <div className={styles.nodePath} title={data.path}>{data.path}</div>
       <div className={styles.nodeHint}>Double-click to edit request</div>
 
-      <Handle className={styles.sourceHandle} type="source" position={Position.Right} />
+      <Handle id="output-right" className={styles.connectionHandle} type="source" position={Position.Right} />
+      <Handle id="output-bottom" className={styles.connectionHandle} type="source" position={Position.Bottom} />
+
     </div>
   );
 }

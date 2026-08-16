@@ -8,12 +8,7 @@ import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
 import type { BrickFlow } from '@/types';
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'default',
-  active: 'green',
-  disabled: 'red',
-};
+import { RunResultDrawer } from '@/features/run-result/RunResultDrawer';
 
 export default function FlowsPage() {
   const { message } = AntdApp.useApp();
@@ -22,6 +17,8 @@ export default function FlowsPage() {
   const [editVisible, setEditVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<BrickFlow | null>(null);
   const [swaggerMappingId, setSwaggerMappingId] = useState<number | undefined>();
+  const [resultRunId, setResultRunId] = useState<number>();
+  const [resultFlowId, setResultFlowId] = useState<number>();
   const [pageNum, setPageNum] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -65,12 +62,18 @@ export default function FlowsPage() {
 
   const runMutation = useMutation({
     mutationFn: (id: number) => api.runFlow(id, 'admin'),
-    onSuccess: (run) => {
+    onSuccess: (run, flowId) => {
       queryClient.invalidateQueries({ queryKey: ['runs'] });
+      if (run.id == null) {
+        message.error('The backend completed the run without returning its ID');
+        return;
+      }
+      setResultRunId(run.id);
+      setResultFlowId(flowId);
       if (run.status === 'success') {
         message.success(`Flow completed in ${run.durationMs ?? 0} ms`);
       } else {
-        message.error(run.errorMsg ? `Flow failed: ${run.errorMsg}` : 'Flow failed');
+        message.warning('Flow completed with failures');
       }
     },
     onError: (err: Error) => message.error(err.message),
@@ -92,7 +95,6 @@ export default function FlowsPage() {
       <Link className="responsive-table-text" href={`/flows/${record.id}`}>{name}</Link>
     )},
     { title: 'Environment', dataIndex: 'env', key: 'env', responsive: ['sm'], render: (env) => <Tag color="blue">{env}</Tag> },
-    { title: 'Status', dataIndex: 'status', key: 'status', responsive: ['sm'], render: (s) => <Tag color={STATUS_COLORS[s]}>{s}</Tag> },
     { title: 'Version', dataIndex: 'version', key: 'version', responsive: ['lg'] },
     { title: 'Created At', dataIndex: 'createTime', key: 'createTime', responsive: ['xl'] },
     { title: 'Actions', key: 'action', render: (_, record) => (
@@ -100,7 +102,17 @@ export default function FlowsPage() {
         <Link href={`/flows/${record.id}`}>
           <Button size="small" type="link" icon={<PartitionOutlined />} title="Design" aria-label="Design"><span className="responsive-action-label">Design</span></Button>
         </Link>
-        <Button size="small" type="link" icon={<PlayCircleOutlined />} title="Run" aria-label="Run" onClick={() => runMutation.mutate(record.id!)}><span className="responsive-action-label">Run</span></Button>
+        <Button
+          size="small"
+          type="link"
+          icon={<PlayCircleOutlined />}
+          title="Run"
+          aria-label="Run"
+          loading={runMutation.isPending && runMutation.variables === record.id}
+          onClick={() => runMutation.mutate(record.id!)}
+        >
+          <span className="responsive-action-label">Run</span>
+        </Button>
         <Button size="small" type="link" icon={<EditOutlined />} title="Edit" aria-label="Edit" onClick={() => handleEdit(record)}><span className="responsive-action-label">Edit</span></Button>
         <Button size="small" type="link" icon={<CopyOutlined />} title="Copy" aria-label="Copy" onClick={() => handleCopy(record)}><span className="responsive-action-label">Copy</span></Button>
         <Popconfirm title="Delete this flow?" onConfirm={() => deleteMutation.mutate(record.id!)}>
@@ -193,6 +205,14 @@ export default function FlowsPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <RunResultDrawer
+        open={resultRunId != null}
+        runId={resultRunId}
+        rerunning={runMutation.isPending}
+        onClose={() => setResultRunId(undefined)}
+        onRunAgain={resultFlowId == null ? undefined : () => runMutation.mutate(resultFlowId)}
+      />
     </div>
   );
 }

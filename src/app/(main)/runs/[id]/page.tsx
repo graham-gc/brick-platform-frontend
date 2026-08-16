@@ -36,6 +36,8 @@ const STATUS_COLORS: Record<string, string> = {
   running: 'processing',
   success: 'success',
   failed: 'error',
+  blocked: 'warning',
+  skipped: 'default',
 };
 
 function statusIcon(status?: string) {
@@ -155,7 +157,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       label: 'Overview',
       children: (
         <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-          {selectedNode.errorMsg && <Alert type="error" showIcon title="Node execution failed" description={selectedNode.errorMsg} />}
+          {selectedNode.errorMsg && (
+            <Alert
+              type={selectedNode.status === 'blocked' ? 'warning' : 'error'}
+              showIcon
+              title={selectedNode.status === 'blocked' ? 'Node execution blocked' : 'Node execution failed'}
+              description={selectedNode.errorMsg}
+            />
+          )}
           <Descriptions bordered column={{ xs: 1, sm: 2, lg: 3 }}>
             <Descriptions.Item label="Node ID">{selectedNode.nodeId ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="Endpoint ID">{selectedNode.endpointId ?? '-'}</Descriptions.Item>

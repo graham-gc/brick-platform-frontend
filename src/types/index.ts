@@ -114,6 +114,7 @@ export interface BrickFlowNode {
   x?: number;
   y?: number;
   nodeType?: string;
+  joinMode?: 'ALL' | 'ANY';
   isDeleted?: number;
 }
 
@@ -123,6 +124,8 @@ export interface BrickFlowEdge {
   flowId?: number;
   sourceNodeId?: number;
   targetNodeId?: number;
+  sourceHandle?: 'input-top' | 'input-left' | 'output-right' | 'output-bottom';
+  targetHandle?: 'input-top' | 'input-left' | 'output-right' | 'output-bottom';
   edgeType?: string;
   conditionJson?: string;
   isDeleted?: number;
