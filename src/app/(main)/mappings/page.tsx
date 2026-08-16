@@ -179,22 +179,22 @@ export default function MappingsPage() {
 
   const columns: ColumnsType<AppSwaggerMapping> = [
     { title: 'ID', dataIndex: 'id', key: 'id', responsive: ['md'] },
-    { title: 'Application Name', dataIndex: 'appName', key: 'appName' },
+    { title: 'Application Name', dataIndex: 'appName', key: 'appName', render: (value) => <span className="responsive-table-text">{value}</span> },
     { title: 'Environment', dataIndex: 'env', key: 'env', responsive: ['sm'], render: (env) => <Tag color="blue">{env}</Tag> },
     { title: 'Version', dataIndex: 'versionTag', key: 'versionTag', responsive: ['md'] },
-    { title: 'Swagger URL', dataIndex: 'swaggerUrl', key: 'swaggerUrl', ellipsis: true, responsive: ['lg'] },
+    { title: 'Swagger URL', dataIndex: 'swaggerUrl', key: 'swaggerUrl', responsive: ['lg'], render: (value) => <span className="responsive-table-text">{value}</span> },
     { title: 'Owner', dataIndex: 'owner', key: 'owner', responsive: ['xl'] },
     { title: 'Actions', key: 'action', render: (_, record) => (
-      <div className="mapping-actions">
+      <div className="responsive-table-actions">
         <Button size="small" icon={<SyncOutlined />} title="Sync" aria-label="Sync" onClick={() => handleSync(record)}>
-          <span className="mapping-action-label">Sync</span>
+          <span className="responsive-action-label">Sync</span>
         </Button>
         <Button size="small" icon={<EditOutlined />} title="Edit" aria-label="Edit" onClick={() => handleEdit(record)}>
-          <span className="mapping-action-label">Edit</span>
+          <span className="responsive-action-label">Edit</span>
         </Button>
         <Popconfirm title="Delete this mapping?" onConfirm={() => deleteMutation.mutate(record.id!)}>
           <Button size="small" danger icon={<DeleteOutlined />} title="Delete" aria-label="Delete">
-            <span className="mapping-action-label">Delete</span>
+            <span className="responsive-action-label">Delete</span>
           </Button>
         </Popconfirm>
       </div>
@@ -414,6 +414,7 @@ export default function MappingsPage() {
       </div>
 
       <Table
+        className="responsive-data-table"
         columns={columns}
         dataSource={data}
         rowKey="id"

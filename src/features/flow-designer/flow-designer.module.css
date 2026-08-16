@@ -1,0 +1,278 @@
+.page {
+  display: flex;
+  min-width: 0;
+  min-height: calc(100vh - 48px);
+  flex-direction: column;
+  gap: 16px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbarIdentity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.flowTitleBlock {
+  min-width: 0;
+}
+
+.flowTitleBlock h2 {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.designerShell {
+  display: grid;
+  min-width: 0;
+  min-height: 620px;
+  flex: 1;
+  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.palette,
+.canvasPanel {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+}
+
+.paletteHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.paletteTitle {
+  color: #111827;
+  font-weight: 600;
+}
+
+.paletteCount {
+  margin-top: 2px;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.paletteFilters {
+  display: grid;
+  padding: 12px;
+  gap: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.endpointList {
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.endpointItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #f7f8fa;
+  cursor: grab;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.endpointItem:hover {
+  border-color: #91caff;
+  background: #e6f4ff;
+  transform: translateY(-1px);
+}
+
+.endpointItem:active {
+  cursor: grabbing;
+}
+
+.endpointItemContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.endpointItemTitle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  color: #262626;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.endpointItemTitle span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endpointPath {
+  margin-top: 5px;
+  overflow: hidden;
+  color: #737373;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvasPanel {
+  position: relative;
+  background: #fafafa;
+}
+
+.emptyCanvas {
+  max-width: 360px;
+  margin-top: 180px;
+  padding: 16px 20px;
+  border: 1px dashed #bfbfbf;
+  border-radius: 8px;
+  color: #8c8c8c;
+  background: rgba(255, 255, 255, 0.88);
+  text-align: center;
+  pointer-events: none;
+}
+
+.httpNode {
+  position: relative;
+  width: 230px;
+  padding: 12px 14px;
+  border: 2px solid #d9d9d9;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.httpNode:hover,
+.httpNodeSelected {
+  border-color: #1677ff;
+  box-shadow: 0 5px 18px rgba(22, 119, 255, 0.16);
+}
+
+.nodeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.nodeId {
+  overflow: hidden;
+  color: #8c8c8c;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+.nodeLabel {
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodePath {
+  margin-top: 5px;
+  overflow: hidden;
+  color: #6b7280;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeHint {
+  margin-top: 9px;
+  color: #a3a3a3;
+  font-size: 10px;
+}
+
+.targetHandle,
+.sourceHandle {
+  width: 11px;
+  height: 11px;
+  border: 2px solid #fff;
+  background: #1677ff;
+}
+
+.editorTabContent {
+  width: 100%;
+}
+
+.editorTabContent :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.parameterSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.jsonEditor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 16px;
+}
+
+@media (max-width: 1000px) {
+  .designerShell {
+    min-height: 820px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 30vh) minmax(560px, 1fr);
+  }
+
+  .paletteFilters {
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 180px);
+  }
+}
+
+@media (max-width: 600px) {
+  .toolbar,
+  .toolbarIdentity {
+    align-items: flex-start;
+  }
+
+  .toolbarIdentity {
+    width: 100%;
+  }
+
+  .paletteFilters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

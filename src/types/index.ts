@@ -44,9 +44,35 @@ export interface EndpointDefinition {
   swaggerVersion?: string;
   createsTypes?: string;
   producesTypes?: string;
+  requestDefinitionJson?: string;
   isDeleted?: number;
   createTime?: string;
   updateTime?: string;
+}
+
+export interface EndpointParameterDefinition {
+  name: string;
+  in: string;
+  required?: boolean;
+  description?: string;
+  schema?: Record<string, unknown>;
+  example?: unknown;
+}
+
+export interface EndpointRequestBodyDefinition {
+  required?: boolean;
+  contentType?: string;
+  schema?: Record<string, unknown>;
+  example?: unknown;
+}
+
+export interface EndpointRequestDefinition {
+  headers?: EndpointParameterDefinition[];
+  queryParameters?: EndpointParameterDefinition[];
+  pathParameters?: EndpointParameterDefinition[];
+  cookieParameters?: EndpointParameterDefinition[];
+  formParameters?: EndpointParameterDefinition[];
+  requestBody?: EndpointRequestBodyDefinition;
 }
 
 // BrickFlow
@@ -59,6 +85,10 @@ export interface BrickFlow {
   description?: string;
   status?: string;
   version?: number;
+  sharedHeadersJson?: string;
+  viewportX?: number;
+  viewportY?: number;
+  viewportZoom?: number;
   isDeleted?: number;
   createBy?: string;
   createTime?: string;

@@ -48,23 +48,37 @@ textarea:-webkit-autofill:focus {
   caret-color: #171717;
 }
 
-.mapping-actions {
+.responsive-table-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
 
-@media (max-width: 767px) {
-  .mapping-actions {
-    flex-wrap: nowrap;
-  }
+.responsive-data-table .ant-table-cell,
+.responsive-table-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
-  .mapping-actions .ant-btn {
+.responsive-filter-bar {
+  width: 100%;
+}
+
+.responsive-filter-bar .ant-space-item {
+  max-width: 100%;
+}
+
+.responsive-filter-control {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .responsive-table-actions .ant-btn {
     padding-inline: 7px;
   }
 
-  .mapping-action-label {
+  .responsive-action-label {
     display: none;
   }
 }

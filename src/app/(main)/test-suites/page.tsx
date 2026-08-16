@@ -13,7 +13,6 @@ export default function TestSuitesPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [editVisible, setEditVisible] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<BrickTestSuite | null>(null);
   const [swaggerMappingId, setSwaggerMappingId] = useState<number | undefined>();
   const [pageNum, setPageNum] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -27,11 +26,6 @@ export default function TestSuitesPage() {
   const { data: mappings } = useQuery({
     queryKey: ['mappings'],
     queryFn: () => api.getMappings(),
-  });
-
-  const { data: flows } = useQuery({
-    queryKey: ['flows'],
-    queryFn: () => api.getFlows(),
   });
 
   const createMutation = useMutation({
@@ -64,18 +58,18 @@ export default function TestSuitesPage() {
   });
 
   const columns: ColumnsType<BrickTestSuite> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: 'Test Suite Name', dataIndex: 'name', key: 'name' },
-    { title: 'Environment', dataIndex: 'env', key: 'env', render: (env) => <Tag color="blue">{env}</Tag> },
-    { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
-    { title: 'Created At', dataIndex: 'createTime', key: 'createTime' },
-    { title: 'Actions', key: 'action', width: 200, render: (_, record) => (
-      <Space>
-        <Button size="small" type="link" icon={<PlayCircleOutlined />} onClick={() => runMutation.mutate(record.id!)}>Run</Button>
+    { title: 'ID', dataIndex: 'id', key: 'id', responsive: ['md'] },
+    { title: 'Test Suite Name', dataIndex: 'name', key: 'name', render: (value) => <span className="responsive-table-text">{value}</span> },
+    { title: 'Environment', dataIndex: 'env', key: 'env', responsive: ['sm'], render: (env) => <Tag color="blue">{env}</Tag> },
+    { title: 'Description', dataIndex: 'description', key: 'description', responsive: ['md'], render: (value) => <span className="responsive-table-text">{value}</span> },
+    { title: 'Created At', dataIndex: 'createTime', key: 'createTime', responsive: ['lg'] },
+    { title: 'Actions', key: 'action', render: (_, record) => (
+      <div className="responsive-table-actions">
+        <Button size="small" type="link" icon={<PlayCircleOutlined />} title="Run" aria-label="Run" onClick={() => runMutation.mutate(record.id!)}><span className="responsive-action-label">Run</span></Button>
         <Popconfirm title="Delete this test suite?" onConfirm={() => deleteMutation.mutate(record.id!)}>
-          <Button size="small" danger type="link" icon={<DeleteOutlined />}>Delete</Button>
+          <Button size="small" danger type="link" icon={<DeleteOutlined />} title="Delete" aria-label="Delete"><span className="responsive-action-label">Delete</span></Button>
         </Popconfirm>
-      </Space>
+      </div>
     )},
   ];
 
@@ -83,15 +77,16 @@ export default function TestSuitesPage() {
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <h2>Test Suites</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingRecord(null); form.resetFields(); setEditVisible(true); }}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setEditVisible(true); }}>
           New Test Suite
         </Button>
       </div>
 
       <Card style={{ marginBottom: 16 }}>
-        <Space wrap>
+        <Space wrap className="responsive-filter-bar">
           <Select
             placeholder="Select an application"
+            className="responsive-filter-control"
             style={{ width: 300 }}
             allowClear
             onChange={(v) => setSwaggerMappingId(v)}
@@ -106,10 +101,12 @@ export default function TestSuitesPage() {
       </Card>
 
       <Table
+        className="responsive-data-table"
         columns={columns}
         dataSource={data?.rows}
         rowKey="id"
         loading={isLoading}
+        tableLayout="auto"
         pagination={{
           current: pageNum,
           pageSize,

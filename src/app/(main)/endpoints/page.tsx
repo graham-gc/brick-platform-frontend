@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Table, Input, Select, Tag, Space, Button, Card } from 'antd';
+import { Table, Input, Select, Tag, Space, Card } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import * as api from '@/services/api';
 import type { EndpointDefinition } from '@/types';
@@ -17,7 +17,7 @@ const METHOD_COLORS: Record<string, string> = {
 };
 
 export default function EndpointsPage() {
-  const { currentMapping, setCurrentMapping } = useBrickStore();
+  const { setCurrentMapping } = useBrickStore();
   const [swaggerMappingId, setSwaggerMappingId] = useState<number | null>(null);
   const [method, setMethod] = useState<string | undefined>();
   const [keyword, setKeyword] = useState('');
@@ -45,22 +45,38 @@ export default function EndpointsPage() {
   };
 
   const columns: ColumnsType<EndpointDefinition> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+    { title: 'ID', dataIndex: 'id', key: 'id', responsive: ['md'] },
     {
       title: 'Method',
       dataIndex: 'httpMethod',
       key: 'httpMethod',
-      width: 80,
       render: (method) => <Tag color={METHOD_COLORS[method] || 'default'}>{method}</Tag>,
     },
-    { title: 'Path', dataIndex: 'endpointPath', key: 'endpointPath', ellipsis: true },
-    { title: 'Summary', dataIndex: 'summary', key: 'summary', ellipsis: true },
-    { title: 'Tags', dataIndex: 'tags', key: 'tags', ellipsis: true },
+    {
+      title: 'Path',
+      dataIndex: 'endpointPath',
+      key: 'endpointPath',
+      render: (value) => <span className="responsive-table-text">{value}</span>,
+    },
+    {
+      title: 'Summary',
+      dataIndex: 'summary',
+      key: 'summary',
+      responsive: ['sm'],
+      render: (value) => <span className="responsive-table-text">{value}</span>,
+    },
+    {
+      title: 'Tags',
+      dataIndex: 'tags',
+      key: 'tags',
+      responsive: ['lg'],
+      render: (value) => <span className="responsive-table-text">{value}</span>,
+    },
     {
       title: 'Deprecated',
       dataIndex: 'deprecated',
       key: 'deprecated',
-      width: 60,
+      responsive: ['md'],
       render: (v) => (v ? <Tag color="red">Yes</Tag> : <Tag>No</Tag>),
     },
   ];
@@ -69,9 +85,10 @@ export default function EndpointsPage() {
     <div>
       <h2>Endpoint Definitions</h2>
       <Card style={{ marginBottom: 16 }}>
-        <Space wrap>
+        <Space wrap className="responsive-filter-bar">
           <Select
             placeholder="Select an application"
+            className="responsive-filter-control"
             style={{ width: 300 }}
             onChange={handleSelectMapping}
             value={swaggerMappingId}
@@ -85,6 +102,7 @@ export default function EndpointsPage() {
           </Select>
           <Select
             placeholder="HTTP method"
+            className="responsive-filter-control"
             style={{ width: 120 }}
             allowClear
             value={method}
@@ -96,6 +114,7 @@ export default function EndpointsPage() {
           </Select>
           <Input.Search
             placeholder="Search path or summary"
+            className="responsive-filter-control"
             style={{ width: 200 }}
             onSearch={(v) => { setKeyword(v); setPageNum(1); }}
           />
@@ -103,10 +122,12 @@ export default function EndpointsPage() {
       </Card>
 
       <Table
+        className="responsive-data-table"
         columns={columns}
         dataSource={data?.rows}
         rowKey="id"
         loading={isLoading}
+        tableLayout="auto"
         pagination={{
           current: pageNum,
           pageSize,

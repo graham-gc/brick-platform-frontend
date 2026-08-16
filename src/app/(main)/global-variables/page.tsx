@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { App as AntdApp, Table, Button, Space, Modal, Form, Input, Select, Tag, Popconfirm, Card, Tabs } from 'antd';
+import { App as AntdApp, Table, Button, Modal, Form, Input, Select, Tag, Popconfirm, Card, Tabs } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import * as api from '@/services/api';
@@ -75,20 +75,20 @@ export default function GlobalVariablesPage() {
   });
 
   const columns: ColumnsType<BrickGlobalVariable> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: 'Variable Name', dataIndex: 'name', key: 'name' },
-    { title: 'Type', dataIndex: 'type', key: 'type', render: (t) => <Tag color={TYPE_COLORS[t]}>{t}</Tag> },
-    { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
-    { title: 'Syntax', dataIndex: 'syntax', key: 'syntax', ellipsis: true },
-    { title: 'Data Type', dataIndex: 'dataType', key: 'dataType' },
-    { title: 'Enabled', dataIndex: 'isEnabled', key: 'isEnabled', render: (v) => v ? <Tag color="green">Yes</Tag> : <Tag>No</Tag> },
-    { title: 'Actions', key: 'action', width: 150, render: (_, record) => (
-      <Space>
-        <Button size="small" type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>Edit</Button>
+    { title: 'ID', dataIndex: 'id', key: 'id', responsive: ['md'] },
+    { title: 'Variable Name', dataIndex: 'name', key: 'name', render: (value) => <span className="responsive-table-text">{value}</span> },
+    { title: 'Type', dataIndex: 'type', key: 'type', responsive: ['sm'], render: (t) => <Tag color={TYPE_COLORS[t]}>{t}</Tag> },
+    { title: 'Description', dataIndex: 'description', key: 'description', responsive: ['lg'], render: (value) => <span className="responsive-table-text">{value}</span> },
+    { title: 'Syntax', dataIndex: 'syntax', key: 'syntax', responsive: ['xl'], render: (value) => <span className="responsive-table-text">{value}</span> },
+    { title: 'Data Type', dataIndex: 'dataType', key: 'dataType', responsive: ['md'] },
+    { title: 'Enabled', dataIndex: 'isEnabled', key: 'isEnabled', responsive: ['sm'], render: (v) => v ? <Tag color="green">Yes</Tag> : <Tag>No</Tag> },
+    { title: 'Actions', key: 'action', render: (_, record) => (
+      <div className="responsive-table-actions">
+        <Button size="small" type="link" icon={<EditOutlined />} title="Edit" aria-label="Edit" onClick={() => handleEdit(record)}><span className="responsive-action-label">Edit</span></Button>
         <Popconfirm title="Delete this variable?" onConfirm={() => deleteMutation.mutate(record.id!)}>
-          <Button size="small" danger type="link" icon={<DeleteOutlined />}>Delete</Button>
+          <Button size="small" danger type="link" icon={<DeleteOutlined />} title="Delete" aria-label="Delete"><span className="responsive-action-label">Delete</span></Button>
         </Popconfirm>
-      </Space>
+      </div>
     )},
   ];
 
@@ -119,10 +119,12 @@ export default function GlobalVariablesPage() {
       </Card>
 
       <Table
+        className="responsive-data-table"
         columns={columns}
         dataSource={data}
         rowKey="id"
         loading={isLoading}
+        tableLayout="auto"
         pagination={false}
       />
 
