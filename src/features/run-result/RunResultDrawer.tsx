@@ -52,7 +52,7 @@ function AssertionResults({ runNodeId }: { runNodeId: number }) {
   }
 
   return (
-    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={12} style={{ width: '100%' }}>
       <Descriptions bordered column={{ xs: 1, md: 3 }} size="small">
         <Descriptions.Item label="Total">{assertions.length}</Descriptions.Item>
         <Descriptions.Item label="Passed">
@@ -62,7 +62,7 @@ function AssertionResults({ runNodeId }: { runNodeId: number }) {
           {assertions.filter((a) => a.status === 'failed').length}
         </Descriptions.Item>
       </Descriptions>
-      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={8} style={{ width: '100%' }}>
         {assertions.map((assertion) => (
           <Card
             key={assertion.id}
