@@ -2,7 +2,7 @@
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Alert, AutoComplete, Button, Form, Input, InputNumber, message, Modal, Select, Space, Switch, Tabs, Tag, TreeSelect, Typography } from 'antd';
+import { Alert, AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tabs, Tag, TreeSelect, Typography, message } from 'antd';
 import type { Rule } from 'antd/es/form';
 import * as api from '@/services/api';
 import type { BrickFlowNode, BrickFlowNodeAssertion, EndpointParameterDefinition } from '@/types';
@@ -167,10 +167,10 @@ export function NodeEditorModal({
     mutationFn: (assertions: BrickFlowNodeAssertion[]) =>
       api.updateNodeAssertions(flowNode.id!, assertions, 'admin'),
     onSuccess: () => {
-      message.success('Assertions saved');
+      messageApi.success('Assertions saved');
       refetchAssertions();
     },
-    onError: (err: Error) => message.error(err.message),
+    onError: (err: Error) => messageApi.error(err.message),
   });
   const resolvedDefinition = endpointDetail?.resolvedRequestDefinition
     || endpointDetail?.requestDefinition
@@ -252,6 +252,8 @@ export function NodeEditorModal({
     ),
   });
 
+  const [messageApi, contextHolder] = message.useMessage();
+
   return (
     <Modal
       open
@@ -297,6 +299,7 @@ export function NodeEditorModal({
       }}
       destroyOnHidden
     >
+      {contextHolder}
       <Form form={form} layout="vertical" initialValues={initialValues}>
         <Tabs
           defaultActiveKey={missingVariableNames.length ? 'variableBindings' : undefined}
