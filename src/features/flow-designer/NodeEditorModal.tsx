@@ -1,6 +1,7 @@
 'use client';
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Alert, AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tabs, Tag, TreeSelect, Typography, message } from 'antd';
 import type { Rule } from 'antd/es/form';
@@ -162,16 +163,25 @@ export function NodeEditorModal({
   };
   const payloadJson = Form.useWatch('payloadJson', form) ?? initialValues.payloadJson;
   const requestBindings = Form.useWatch('requestBindings', form) ?? initialValues.requestBindings;
+  const [messageApi, contextHolder] = message.useMessage();
 
   const saveAssertionsMutation = useMutation({
     mutationFn: (assertions: BrickFlowNodeAssertion[]) =>
       api.updateNodeAssertions(flowNode.id!, assertions, 'admin'),
-    onSuccess: () => {
+  });
+
+  useEffect(() => {
+    if (saveAssertionsMutation.isSuccess) {
       messageApi.success('Assertions saved');
       refetchAssertions();
-    },
-    onError: (err: Error) => messageApi.error(err.message),
-  });
+    }
+  }, [saveAssertionsMutation.isSuccess, messageApi, refetchAssertions]);
+
+  useEffect(() => {
+    if (saveAssertionsMutation.isError) {
+      messageApi.error(saveAssertionsMutation.error?.message ?? 'Failed to save assertions');
+    }
+  }, [saveAssertionsMutation.isError, saveAssertionsMutation.error, messageApi]);
   const resolvedDefinition = endpointDetail?.resolvedRequestDefinition
     || endpointDetail?.requestDefinition
     || definition;
@@ -251,8 +261,6 @@ export function NodeEditorModal({
       </Space>
     ),
   });
-
-  const [messageApi, contextHolder] = message.useMessage();
 
   return (
     <Modal
