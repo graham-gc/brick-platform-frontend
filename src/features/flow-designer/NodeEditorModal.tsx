@@ -1,11 +1,11 @@
 'use client';
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
-import { Alert, AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Tabs, Tag, TreeSelect, Typography } from 'antd';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Alert, AutoComplete, Button, Form, Input, InputNumber, message, Modal, Select, Space, Switch, Tabs, Tag, TreeSelect, Typography } from 'antd';
 import type { Rule } from 'antd/es/form';
 import * as api from '@/services/api';
-import type { BrickFlowNode, EndpointParameterDefinition } from '@/types';
+import type { BrickFlowNode, BrickFlowNodeAssertion, EndpointParameterDefinition } from '@/types';
 import type { HttpCanvasNode } from './model';
 import {
   arrayFilterFieldOptions,
@@ -57,6 +57,16 @@ interface NodeEditorValues {
   joinMode: 'ALL' | 'ANY';
   responseVariables: FlowResponseVariable[];
   requestBindings: FlowRequestVariableBinding[];
+  assertions: AssertionFormItem[];
+}
+
+interface AssertionFormItem {
+  id?: number;
+  assertionType: 'status_code' | 'json_path' | 'header' | 'response_time';
+  fieldPath?: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'gt' | 'lt' | 'gte' | 'lte' | 'regex';
+  expectedValue: string;
+  isEnabled: boolean;
 }
 
 interface NodeEditorModalProps {
@@ -114,6 +124,19 @@ export function NodeEditorModal({
   const definition = parseRequestDefinition(endpoint);
   const defaults = endpoint ? createInitialNodeRequest(endpoint) : {};
   const flowNode = node.data.flowNode;
+
+  const { data: endpointDetail, isLoading: responseSchemaLoading } = useQuery({
+    queryKey: ['endpoint-detail', endpoint?.id],
+    queryFn: () => api.getEndpointDetail(endpoint!.id!),
+    enabled: endpoint?.id != null,
+  });
+
+  const { data: assertionsData = [], refetch: refetchAssertions } = useQuery({
+    queryKey: ['node-assertions', flowNode.id],
+    queryFn: () => api.getNodeAssertions(flowNode.id!),
+    enabled: !!flowNode.id,
+  });
+
   const initialValues: NodeEditorValues = {
     payloadJson: flowNode.payloadJson?.trim()
       ? prettyStoredJson(flowNode.payloadJson, {})
@@ -128,13 +151,26 @@ export function NodeEditorModal({
     joinMode: flowNode.joinMode ?? 'ALL',
     responseVariables: parseResponseVariables(flowNode),
     requestBindings: parseRequestVariableBindings(flowNode),
+    assertions: assertionsData.map((a): AssertionFormItem => ({
+      id: a.id,
+      assertionType: a.assertionType ?? 'status_code',
+      fieldPath: a.fieldPath ?? '',
+      operator: a.operator ?? 'equals',
+      expectedValue: a.expectedValue ?? '',
+      isEnabled: !!a.isEnabled,
+    })),
   };
   const payloadJson = Form.useWatch('payloadJson', form) ?? initialValues.payloadJson;
   const requestBindings = Form.useWatch('requestBindings', form) ?? initialValues.requestBindings;
-  const { data: endpointDetail, isLoading: responseSchemaLoading } = useQuery({
-    queryKey: ['endpoint-detail', endpoint?.id],
-    queryFn: () => api.getEndpointDetail(endpoint!.id!),
-    enabled: endpoint?.id != null,
+
+  const saveAssertionsMutation = useMutation({
+    mutationFn: (assertions: BrickFlowNodeAssertion[]) =>
+      api.updateNodeAssertions(flowNode.id!, assertions, 'admin'),
+    onSuccess: () => {
+      message.success('Assertions saved');
+      refetchAssertions();
+    },
+    onError: (err: Error) => message.error(err.message),
   });
   const resolvedDefinition = endpointDetail?.resolvedRequestDefinition
     || endpointDetail?.requestDefinition
@@ -230,6 +266,17 @@ export function NodeEditorModal({
       onCancel={onCancel}
       onOk={() => {
         void form.validateFields().then((values) => {
+          const assertionsPayload: BrickFlowNodeAssertion[] = (values.assertions || []).map(
+            (item: AssertionFormItem) => ({
+              id: item.id,
+              nodeId: flowNode.id,
+              assertionType: item.assertionType,
+              fieldPath: item.fieldPath || undefined,
+              operator: item.operator,
+              expectedValue: item.expectedValue,
+              isEnabled: item.isEnabled ? 1 : 0,
+            })
+          );
           onSave({
             payloadJson: values.payloadJson?.trim() || undefined,
             queryParamsJson: values.queryParamsJson,
@@ -243,6 +290,9 @@ export function NodeEditorModal({
             ),
             requestVariableBindingsJson: JSON.stringify(values.requestBindings || []),
           });
+          if (flowNode.id) {
+            void saveAssertionsMutation.mutateAsync(assertionsPayload);
+          }
         });
       }}
       destroyOnHidden
@@ -804,6 +854,121 @@ export function NodeEditorModal({
                     />
                   </Form.Item>
                 </div>
+              ),
+            },
+            {
+              key: 'assertions',
+              label: 'Assertions',
+              children: (
+                <Space orientation="vertical" size={12} className={styles.editorTabContent}>
+                  <Alert
+                    type="info"
+                    showIcon
+                    title="Configure assertions to validate the response from this node."
+                    description="Assertions run after the node receives a response. Failed assertions mark the node as failed."
+                  />
+                  <Form.List name="assertions">
+                    {(fields, { add, remove }) => (
+                      <Space orientation="vertical" size={10} className={styles.contextList}>
+                        {fields.map((field) => (
+                          <Form.Item key={field.key} noStyle shouldUpdate>
+                            {({ getFieldValue }) => {
+                              const assertion = (getFieldValue(['assertions', field.name]) || {}) as AssertionFormItem;
+                              const assertionType = assertion.assertionType || 'status_code';
+                              const needsFieldPath = assertionType === 'json_path' || assertionType === 'header';
+                              const numericOperators = [
+                                { value: 'equals', label: 'equals' },
+                                { value: 'not_equals', label: 'not equals' },
+                                { value: 'gt', label: '>' },
+                                { value: 'lt', label: '<' },
+                                { value: 'gte', label: '>=' },
+                                { value: 'lte', label: '<=' },
+                              ];
+                              const textOperators = [
+                                { value: 'equals', label: 'equals' },
+                                { value: 'not_equals', label: 'not equals' },
+                                { value: 'contains', label: 'contains' },
+                                { value: 'not_contains', label: 'not contains' },
+                                { value: 'regex', label: 'regex' },
+                              ];
+                              const operators = needsFieldPath ? textOperators : numericOperators;
+
+                              return (
+                                <div className={styles.assertionRow}>
+                                  <Form.Item
+                                    name={[field.name, 'assertionType']}
+                                    label="Type"
+                                    rules={[{ required: true }]}
+                                  >
+                                    <Select
+                                      options={[
+                                        { value: 'status_code', label: 'Status Code' },
+                                        { value: 'json_path', label: 'JSON Path' },
+                                        { value: 'header', label: 'Header' },
+                                        { value: 'response_time', label: 'Response Time (ms)' },
+                                      ]}
+                                    />
+                                  </Form.Item>
+                                  {needsFieldPath && (
+                                    <Form.Item
+                                      name={[field.name, 'fieldPath']}
+                                      label="Field Path"
+                                      rules={[{ required: true, message: 'Field path is required' }]}
+                                    >
+                                      <Input placeholder={assertionType === 'json_path' ? '$.data.name' : 'Content-Type'} />
+                                    </Form.Item>
+                                  )}
+                                  <Form.Item
+                                    name={[field.name, 'operator']}
+                                    label="Operator"
+                                    rules={[{ required: true }]}
+                                  >
+                                    <Select options={operators} />
+                                  </Form.Item>
+                                  <Form.Item
+                                    name={[field.name, 'expectedValue']}
+                                    label="Expected"
+                                    rules={[{ required: true, message: 'Expected value is required' }]}
+                                  >
+                                    <Input placeholder={assertionType === 'status_code' ? '200' : 'value'} />
+                                  </Form.Item>
+                                  <Form.Item
+                                    name={[field.name, 'isEnabled']}
+                                    label="Enabled"
+                                    valuePropName="checked"
+                                  >
+                                    <Switch />
+                                  </Form.Item>
+                                  <Button
+                                    type="text"
+                                    danger
+                                    aria-label="Remove assertion"
+                                    icon={<MinusCircleOutlined />}
+                                    onClick={() => remove(field.name)}
+                                    style={{ marginTop: 24 }}
+                                  />
+                                </div>
+                              );
+                            }}
+                          </Form.Item>
+                        ))}
+                        <Button
+                          type="dashed"
+                          icon={<PlusOutlined />}
+                          onClick={() => add({
+                            assertionType: 'status_code',
+                            fieldPath: '',
+                            operator: 'equals',
+                            expectedValue: '200',
+                            isEnabled: true,
+                          })}
+                        >
+                          Add Assertion
+                        </Button>
+                      </Space>
+                    )}
+                  </Form.List>
+                </Space>
               ),
             },
           ]}

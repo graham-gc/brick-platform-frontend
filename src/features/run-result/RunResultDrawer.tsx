@@ -27,7 +27,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
-import type { BrickFlowRunNode } from '@/types';
+import type { BrickFlowRunNode, BrickFlowRunNodeAssertion } from '@/types';
 import { conciseFlowError } from './error-summary';
 import styles from './run-result-drawer.module.css';
 
@@ -38,6 +38,62 @@ const STATUS_COLORS: Record<string, string> = {
   blocked: 'warning',
   skipped: 'default',
 };
+
+function AssertionResults({ runNodeId }: { runNodeId: number }) {
+  const { data: assertions = [], isLoading } = useQuery({
+    queryKey: ['run-node-assertions', runNodeId],
+    queryFn: () => api.getRunNodeAssertions(runNodeId),
+  });
+
+  if (isLoading) return <Spin />;
+
+  if (assertions.length === 0) {
+    return <Empty description="No assertion records found." />;
+  }
+
+  return (
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      <Descriptions bordered column={{ xs: 1, md: 3 }} size="small">
+        <Descriptions.Item label="Total">{assertions.length}</Descriptions.Item>
+        <Descriptions.Item label="Passed">
+          {assertions.filter((a) => a.status === 'passed').length}
+        </Descriptions.Item>
+        <Descriptions.Item label="Failed" style={{ color: '#ff4d4f' }}>
+          {assertions.filter((a) => a.status === 'failed').length}
+        </Descriptions.Item>
+      </Descriptions>
+      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+        {assertions.map((assertion) => (
+          <Card
+            key={assertion.id}
+            size="small"
+            style={{
+              borderColor: assertion.status === 'passed' ? '#52c41a' : '#ff4d4f',
+            }}
+          >
+            <Space wrap>
+              <Tag color={assertion.status === 'passed' ? 'success' : 'error'}>
+                {assertion.status?.toUpperCase()}
+              </Tag>
+              <Typography.Text strong>{assertion.assertionId}</Typography.Text>
+              <Typography.Text type="secondary">
+                Expected: {assertion.expectedValue ?? '-'}
+              </Typography.Text>
+              {assertion.actualValue !== undefined && assertion.actualValue !== null && (
+                <Typography.Text type="secondary">
+                  Actual: {assertion.actualValue}
+                </Typography.Text>
+              )}
+              {assertion.errorMsg && (
+                <Typography.Text type="danger">{assertion.errorMsg}</Typography.Text>
+              )}
+            </Space>
+          </Card>
+        ))}
+      </Space>
+    </Space>
+  );
+}
 
 interface RunResultDrawerProps {
   open: boolean;
@@ -200,12 +256,7 @@ export function RunResultDrawer({
       key: 'assertions',
       label: `Assertions (${selectedNode.assertionTotalCount ?? 0})`,
       children: selectedNode.assertionTotalCount ? (
-        <Descriptions bordered column={{ xs: 1, md: 3 }} size="small">
-          <Descriptions.Item label="Total">{selectedNode.assertionTotalCount}</Descriptions.Item>
-          <Descriptions.Item label="Passed">{selectedNode.assertionPassedCount ?? 0}</Descriptions.Item>
-          <Descriptions.Item label="Failed">{selectedNode.assertionFailedCount ?? 0}</Descriptions.Item>
-          <Descriptions.Item label="Summary" span="filled">{selectedNode.assertionSummary || '-'}</Descriptions.Item>
-        </Descriptions>
+        <AssertionResults runNodeId={selectedNode.id!} />
       ) : <Empty description="No assertions were evaluated for this node." />,
     },
   ] : [];

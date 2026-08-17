@@ -245,6 +245,21 @@
   margin-bottom: 0;
 }
 
+.assertionRow {
+  display: grid;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(160px, 1fr) minmax(160px, 0.8fr) minmax(180px, 1fr) 70px auto;
+}
+
+.assertionRow :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
 .flowHeaderRow {
   display: grid;
   grid-template-columns: minmax(190px, 0.75fr) minmax(300px, 1.25fr) auto;

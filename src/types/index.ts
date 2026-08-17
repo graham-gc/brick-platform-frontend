@@ -210,6 +210,28 @@ export interface BrickGlobalVariable {
   createTime?: string;
 }
 
+// BrickFlowNodeAssertion
+export interface BrickFlowNodeAssertion {
+  id?: number;
+  nodeId?: number;
+  assertionType?: 'status_code' | 'json_path' | 'header' | 'response_time';
+  fieldPath?: string;
+  operator?: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'gt' | 'lt' | 'gte' | 'lte' | 'regex';
+  expectedValue?: string;
+  isEnabled?: number;
+}
+
+// BrickFlowRunNodeAssertion
+export interface BrickFlowRunNodeAssertion {
+  id?: number;
+  runNodeId?: number;
+  assertionId?: number;
+  status?: 'passed' | 'failed';
+  actualValue?: string;
+  expectedValue?: string;
+  errorMsg?: string;
+}
+
 // Pagination
 export interface PaginatedResponse<T> {
   rows: T[];
