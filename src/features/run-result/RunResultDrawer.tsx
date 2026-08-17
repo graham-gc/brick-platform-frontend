@@ -28,6 +28,7 @@ import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
 import type { BrickFlowRunNode } from '@/types';
+import { conciseFlowError } from './error-summary';
 import styles from './run-result-drawer.module.css';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -258,7 +259,7 @@ export function RunResultDrawer({
               type="error"
               showIcon
               title="Flow execution completed with failures"
-              description={run.errorMsg}
+              description={conciseFlowError(run.errorMsg)}
             />
           )}
           <div className={styles.resultGrid}>

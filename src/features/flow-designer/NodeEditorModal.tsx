@@ -27,6 +27,7 @@ import {
   parseRequestDefinition,
   prettyStoredJson,
 } from './request-definition';
+import { isDynamicHeaderValue, parseHeaderEntries } from './headers';
 import styles from './flow-designer.module.css';
 
 const METHOD_COLORS: Record<string, string> = {
@@ -62,6 +63,7 @@ interface NodeEditorModalProps {
   node: HttpCanvasNode;
   availableVariables: AvailableFlowVariable[];
   reservedVariableNames: string[];
+  inheritedHeadersJson?: string;
   onCancel: () => void;
   onSave: (updates: Partial<BrickFlowNode>) => void;
 }
@@ -103,6 +105,7 @@ export function NodeEditorModal({
   node,
   availableVariables,
   reservedVariableNames,
+  inheritedHeadersJson,
   onCancel,
   onSave,
 }: NodeEditorModalProps) {
@@ -127,6 +130,7 @@ export function NodeEditorModal({
     requestBindings: parseRequestVariableBindings(flowNode),
   };
   const payloadJson = Form.useWatch('payloadJson', form) ?? initialValues.payloadJson;
+  const requestBindings = Form.useWatch('requestBindings', form) ?? initialValues.requestBindings;
   const { data: endpointDetail, isLoading: responseSchemaLoading } = useQuery({
     queryKey: ['endpoint-detail', endpoint?.id],
     queryFn: () => api.getEndpointDetail(endpoint!.id!),
@@ -143,6 +147,16 @@ export function NodeEditorModal({
   const pathFields = Array.from(new Set(
     (resolvedDefinition.pathParameters || []).map((parameter) => parameter.name)
   ));
+  const headerFields = Array.from(new Set([
+    ...(resolvedDefinition.headers || []).map((parameter) => parameter.name),
+    'Authorization',
+    'Content-Type',
+    'Accept',
+    'X-Request-Id',
+    'Idempotency-Key',
+    'X-API-Key',
+  ]));
+  const inheritedHeaders = parseHeaderEntries(inheritedHeadersJson);
   const requestAreaOptions = [
     ...(resolvedDefinition.requestBody
       ? [{ value: 'BODY' as const, label: 'Request Body' }]
@@ -153,21 +167,40 @@ export function NodeEditorModal({
     ...(pathFields.length
       ? [{ value: 'PATH' as const, label: `Path Parameters (${pathFields.length})` }]
       : []),
+    { value: 'HEADER' as const, label: 'Headers' },
   ];
-  const variableOptions = availableVariables.map((variable) => ({
-    value: variable.name,
-    label: variable.name,
-    searchText: [
-      variable.name,
-      variable.sourceNodeMethod,
-      variable.sourceNodePath,
-      variable.responsePath,
-    ].join(' '),
-    variable,
-  }));
+  const availableVariableNames = new Set(availableVariables.map((variable) => variable.name));
+  const missingVariableNames = Array.from(new Set(
+    (requestBindings || [])
+      .map((binding) => binding?.variableName)
+      .filter((name): name is string => !!name && !availableVariableNames.has(name))
+  ));
+  const variableOptions = [
+    ...availableVariables.map((variable) => ({
+      value: variable.name,
+      label: variable.name,
+      searchText: [
+        variable.name,
+        variable.sourceNodeMethod,
+        variable.sourceNodePath,
+        variable.responsePath,
+      ].join(' '),
+      variable,
+      missing: false,
+      disabled: false,
+    })),
+    ...missingVariableNames.map((name) => ({
+      value: name,
+      label: `${name} (missing)`,
+      searchText: `${name} missing`,
+      variable: undefined,
+      missing: true,
+      disabled: true,
+    })),
+  ];
 
   const parameterTab = (
-    field: 'queryParamsJson' | 'pathVarsJson' | 'headersJson',
+    field: 'queryParamsJson' | 'pathVarsJson',
     label: string,
     parameters?: EndpointParameterDefinition[]
   ) => ({
@@ -216,6 +249,7 @@ export function NodeEditorModal({
     >
       <Form form={form} layout="vertical" initialValues={initialValues}>
         <Tabs
+          defaultActiveKey={missingVariableNames.length ? 'variableBindings' : undefined}
           items={[
             {
               key: 'body',
@@ -243,7 +277,48 @@ export function NodeEditorModal({
             },
             parameterTab('queryParamsJson', 'Query Parameters', definition.queryParameters),
             parameterTab('pathVarsJson', 'Path Parameters', definition.pathParameters),
-            parameterTab('headersJson', 'Headers', definition.headers),
+            {
+              key: 'headersJson',
+              label: 'Headers',
+              children: (
+                <Space orientation="vertical" size={14} className={styles.editorTabContent}>
+                  <Alert
+                    type="info"
+                    showIcon
+                    title="Flow Headers are inherited first; Node Headers override matching names."
+                    description="Header names are case-insensitive. Variable bindings are applied to this node after both layers are merged."
+                  />
+                  <div className={styles.headerLayer}>
+                    <Typography.Text strong>Inherited Flow Headers</Typography.Text>
+                    {inheritedHeaders.length ? (
+                      <div className={styles.headerEntries}>
+                        {inheritedHeaders.map((header) => (
+                          <div className={styles.headerEntry} key={header.name.toLowerCase()}>
+                            <Typography.Text code>{header.name}</Typography.Text>
+                            <Typography.Text ellipsis={{ tooltip: header.value }}>{header.value}</Typography.Text>
+                            {isDynamicHeaderValue(header.value) && <Tag color="purple">Dynamic</Tag>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <Typography.Text type="secondary">No Flow Headers configured.</Typography.Text>
+                    )}
+                  </div>
+                  <div className={styles.headerLayer}>
+                    <Space orientation="vertical" size={8} className={styles.editorTabContent}>
+                      <div>
+                        <Typography.Text strong>Node Headers</Typography.Text>
+                        <Typography.Text type="secondary"> · only applied to this node</Typography.Text>
+                      </div>
+                      <ParameterSummary parameters={resolvedDefinition.headers} />
+                      <Form.Item name="headersJson" rules={[jsonRule('Headers', true)]}>
+                        <Input.TextArea className={styles.jsonEditor} rows={9} spellCheck={false} />
+                      </Form.Item>
+                    </Space>
+                  </div>
+                </Space>
+              ),
+            },
             {
               key: 'responseVariables',
               label: 'Response Variables',
@@ -273,21 +348,26 @@ export function NodeEditorModal({
                               const selectorMode = variable.selectorMode || 'DIRECT';
                               const fieldPath = variable.fieldPath;
                               const containsArray = hasArraySelection(fieldPath);
+                              const showExtractionMode = containsArray || selectorMode === 'CUSTOM';
                               const filterFields = arrayFilterFieldOptions(responseFields, fieldPath);
                               const expression = responseVariableExpression(variable);
-                              const extractionOptions = [
-                                { value: 'DIRECT', label: 'Direct field' },
-                                ...(containsArray ? [
+                              const extractionOptions = containsArray
+                                ? [
                                   { value: 'INDEX', label: 'Array item by index' },
                                   { value: 'FILTER_FIRST', label: 'First item matching a condition' },
                                   { value: 'ALL', label: 'All matching items' },
-                                ] : []),
-                                { value: 'CUSTOM', label: 'Custom JSONPath' },
-                              ];
+                                  { value: 'CUSTOM', label: 'Custom JSONPath' },
+                                ]
+                                : [
+                                  { value: 'DIRECT', label: 'Direct field' },
+                                  { value: 'CUSTOM', label: 'Custom JSONPath' },
+                                ];
 
                               return (
                                 <div className={styles.contextVariableCard}>
-                                  <div className={styles.contextPrimaryRow}>
+                                  <div className={`${styles.contextPrimaryRow} ${
+                                    showExtractionMode ? '' : styles.contextPrimaryRowSimple
+                                  }`}>
                                     <Form.Item
                                       name={[field.name, 'name']}
                                       label="Variable Name"
@@ -311,35 +391,37 @@ export function NodeEditorModal({
                                     >
                                       <Input placeholder="productId" />
                                     </Form.Item>
-                                    <Form.Item
-                                      name={[field.name, 'selectorMode']}
-                                      label="Extraction Mode"
-                                      rules={[{ required: true }]}
-                                    >
-                                      <Select
-                                        options={extractionOptions}
-                                        onChange={(mode: FlowResponseSelectorMode) => {
-                                          if (mode === 'CUSTOM') {
-                                            form.setFieldValue(
-                                              ['responseVariables', field.name, 'responsePath'],
-                                              expression
-                                            );
-                                          }
-                                          if (mode === 'INDEX' && variable.arrayIndex == null) {
-                                            form.setFieldValue(
-                                              ['responseVariables', field.name, 'arrayIndex'],
-                                              0
-                                            );
-                                          }
-                                          if (mode === 'FILTER_FIRST' && !variable.filterOperator) {
-                                            form.setFieldValue(
-                                              ['responseVariables', field.name, 'filterOperator'],
-                                              '=='
-                                            );
-                                          }
-                                        }}
-                                      />
-                                    </Form.Item>
+                                    {showExtractionMode && (
+                                      <Form.Item
+                                        name={[field.name, 'selectorMode']}
+                                        label={containsArray ? 'Array Selection' : 'Extraction Mode'}
+                                        rules={[{ required: true }]}
+                                      >
+                                        <Select
+                                          options={extractionOptions}
+                                          onChange={(mode: FlowResponseSelectorMode) => {
+                                            if (mode === 'CUSTOM') {
+                                              form.setFieldValue(
+                                                ['responseVariables', field.name, 'responsePath'],
+                                                expression
+                                              );
+                                            }
+                                            if (mode === 'INDEX' && variable.arrayIndex == null) {
+                                              form.setFieldValue(
+                                                ['responseVariables', field.name, 'arrayIndex'],
+                                                0
+                                              );
+                                            }
+                                            if (mode === 'FILTER_FIRST' && !variable.filterOperator) {
+                                              form.setFieldValue(
+                                                ['responseVariables', field.name, 'filterOperator'],
+                                                '=='
+                                              );
+                                            }
+                                          }}
+                                        />
+                                      </Form.Item>
+                                    )}
                                     <Button
                                       type="text"
                                       danger
@@ -506,6 +588,14 @@ export function NodeEditorModal({
                       description="Connect this node downstream from a node that exports a response variable."
                     />
                   )}
+                  {missingVariableNames.length > 0 && (
+                    <Alert
+                      type="error"
+                      showIcon
+                      title="This node contains invalid variable bindings"
+                      description={`Missing flow variable${missingVariableNames.length === 1 ? '' : 's'}: ${missingVariableNames.join(', ')}. Select an existing upstream variable or remove the binding.`}
+                    />
+                  )}
                   {requestAreaOptions.length === 0 && (
                     <Alert
                       type="warning"
@@ -522,7 +612,16 @@ export function NodeEditorModal({
                             <Form.Item
                               name={[field.name, 'variableName']}
                               label="Flow Variable"
-                              rules={[{ required: true, message: 'Select a variable' }]}
+                              rules={[
+                                { required: true, message: 'Select a variable' },
+                                {
+                                  validator: async (_rule, value?: string) => {
+                                    if (value && !availableVariableNames.has(value)) {
+                                      throw new Error(`Flow variable “${value}” no longer exists`);
+                                    }
+                                  },
+                                },
+                              ]}
                             >
                               <Select
                                 showSearch
@@ -530,6 +629,14 @@ export function NodeEditorModal({
                                 options={variableOptions}
                                 optionRender={(option) => {
                                   const variable = option.data.variable;
+                                  if (!variable) {
+                                    return (
+                                      <Space>
+                                        <Typography.Text type="danger">{option.value}</Typography.Text>
+                                        <Tag color="red">Missing variable</Tag>
+                                      </Space>
+                                    );
+                                  }
                                   return (
                                     <div className={styles.variableOption}>
                                       <div className={styles.variableOptionHeader}>
@@ -573,29 +680,72 @@ export function NodeEditorModal({
                             <Form.Item noStyle shouldUpdate>
                               {({ getFieldValue }) => {
                                 const targetType = getFieldValue(['requestBindings', field.name, 'targetType']);
-                                const targetOptions = targetType === 'QUERY' ? queryFields : pathFields;
+                                const targetOptions = targetType === 'QUERY'
+                                  ? queryFields
+                                  : targetType === 'PATH'
+                                    ? pathFields
+                                    : headerFields;
                                 return (
-                                  <Form.Item
-                                    name={[field.name, 'targetPath']}
-                                    label="Target Field"
-                                    rules={[{ required: true, message: 'Select a target field' }]}
-                                  >
-                                    {targetType === 'BODY' ? (
-                                      <TreeSelect
-                                        treeData={bodyFields}
-                                        treeDefaultExpandAll
-                                        showSearch
-                                        treeNodeFilterProp="title"
-                                        placeholder="Select a body field"
-                                      />
-                                    ) : (
-                                      <Select
-                                        disabled={!targetType}
-                                        options={targetOptions.map((name) => ({ value: name, label: name }))}
-                                        placeholder={targetType ? 'Select a request field' : 'Select an area first'}
-                                      />
+                                  <div className={styles.bindingTargetGroup}>
+                                    <Form.Item
+                                      name={[field.name, 'targetPath']}
+                                      label="Target Field"
+                                      rules={[
+                                        { required: true, message: 'Select a target field' },
+                                        {
+                                          validator: async (_rule, value?: string) => {
+                                            if (targetType === 'HEADER' && value
+                                              && !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(value)) {
+                                              throw new Error('Enter a valid HTTP header name');
+                                            }
+                                          },
+                                        },
+                                      ]}
+                                    >
+                                      {targetType === 'BODY' ? (
+                                        <TreeSelect
+                                          treeData={bodyFields}
+                                          treeDefaultExpandAll
+                                          showSearch
+                                          treeNodeFilterProp="title"
+                                          placeholder="Select a body field"
+                                        />
+                                      ) : targetType === 'HEADER' ? (
+                                        <AutoComplete
+                                          options={targetOptions.map((name) => ({ value: name }))}
+                                          placeholder="Header name"
+                                          filterOption={(input, option) => (
+                                            String(option?.value || '').toLowerCase().includes(input.toLowerCase())
+                                          )}
+                                        />
+                                      ) : (
+                                        <Select
+                                          disabled={!targetType}
+                                          options={targetOptions.map((name) => ({ value: name, label: name }))}
+                                          placeholder={targetType ? 'Select a request field' : 'Select an area first'}
+                                        />
+                                      )}
+                                    </Form.Item>
+                                    {targetType === 'HEADER' && (
+                                      <Form.Item
+                                        name={[field.name, 'valueTemplate']}
+                                        label="Value Template"
+                                        tooltip="Use {{value}} where the selected flow variable should be inserted. Leave blank to use the raw value."
+                                        rules={[{
+                                          validator: async (_rule, value?: string) => {
+                                            if (value?.trim() && !value.includes('{{value}}')) {
+                                              throw new Error('The template must contain {{value}}');
+                                            }
+                                            if (value?.includes('\r') || value?.includes('\n')) {
+                                              throw new Error('Header values cannot contain line breaks');
+                                            }
+                                          },
+                                        }]}
+                                      >
+                                        <Input placeholder="Bearer {{value}}" />
+                                      </Form.Item>
                                     )}
-                                  </Form.Item>
+                                  </div>
                                 );
                               }}
                             </Form.Item>
@@ -617,6 +767,7 @@ export function NodeEditorModal({
                               ? requestAreaOptions[0].value
                               : undefined,
                             targetPath: undefined,
+                            valueTemplate: undefined,
                           })}
                           disabled={availableVariables.length === 0 || requestAreaOptions.length === 0}
                         >

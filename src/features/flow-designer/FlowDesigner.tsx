@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { App as AntdApp, Button, Space, Tag, Tooltip } from 'antd';
+import { App as AntdApp, Badge, Button, Space, Tag, Tooltip } from 'antd';
 import {
   ArrowLeftOutlined,
+  GlobalOutlined,
   PlayCircleOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
@@ -32,7 +33,13 @@ import type { BrickFlow, BrickFlowEdge, BrickFlowNode, EndpointDefinition } from
 import { EndpointPalette } from './EndpointPalette';
 import { HttpFlowNode } from './HttpFlowNode';
 import { NodeEditorModal } from './NodeEditorModal';
-import { parseResponseVariables, type AvailableFlowVariable } from './context-variables';
+import { FlowHeadersModal } from './FlowHeadersModal';
+import { parseHeaderEntries } from './headers';
+import {
+  parseRequestVariableBindings,
+  parseResponseVariables,
+  type AvailableFlowVariable,
+} from './context-variables';
 import { createInitialNodeRequest } from './request-definition';
 import type { FlowCanvasEdge, FlowCanvasSavePayload, HttpCanvasNode } from './model';
 import styles from './flow-designer.module.css';
@@ -130,7 +137,7 @@ function FlowDesignerCanvas({
   onRun,
   onSave,
 }: FlowDesignerProps) {
-  const { message } = AntdApp.useApp();
+  const { message, modal } = AntdApp.useApp();
   const canvasRef = useRef<HTMLDivElement>(null);
   const nextTempNodeId = useRef(0);
   const nextTempEdgeId = useRef(0);
@@ -138,6 +145,8 @@ function FlowDesignerCanvas({
   const viewportInteraction = useRef(false);
   const [dirty, setDirty] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string>();
+  const [flowHeadersOpen, setFlowHeadersOpen] = useState(false);
+  const [sharedHeadersJson, setSharedHeadersJson] = useState(flow.sharedHeadersJson || '{}');
   const hasUnsavedChanges = flow.id == null || dirty;
   const { screenToFlowPosition, getViewport } = useReactFlow<HttpCanvasNode, FlowCanvasEdge>();
 
@@ -324,19 +333,86 @@ function FlowDesignerCanvas({
     setEditingNodeId(node.id);
   }, []);
 
-  const handleNodeEditorSave = (updates: Partial<BrickFlowNode>) => {
+  const applyNodeEditorSave = (
+    updates: Partial<BrickFlowNode>,
+    removedVariableNames: Set<string>
+  ) => {
     if (!editingNodeId) return;
-    setNodes((currentNodes) => currentNodes.map((node) => node.id === editingNodeId
-      ? {
+    setNodes((currentNodes) => currentNodes.map((node) => {
+      if (node.id === editingNodeId) {
+        return {
           ...node,
           data: {
             ...node.data,
             flowNode: { ...node.data.flowNode, ...updates },
           },
-        }
-      : node));
+        };
+      }
+      if (!removedVariableNames.size) return node;
+      const bindings = parseRequestVariableBindings(node.data.flowNode);
+      const retainedBindings = bindings.filter(
+        (binding) => !removedVariableNames.has(binding.variableName)
+      );
+      if (retainedBindings.length === bindings.length) return node;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          flowNode: {
+            ...node.data.flowNode,
+            requestVariableBindingsJson: JSON.stringify(retainedBindings),
+          },
+        },
+      };
+    }));
     setEditingNodeId(undefined);
     setDirty(true);
+  };
+
+  const handleNodeEditorSave = (updates: Partial<BrickFlowNode>) => {
+    if (!editingNodeId) return;
+    const editingNode = nodes.find((node) => node.id === editingNodeId);
+    if (!editingNode) return;
+
+    const previousNames = new Set(
+      parseResponseVariables(editingNode.data.flowNode).map((variable) => variable.name)
+    );
+    const nextNames = new Set(
+      parseResponseVariables({ ...editingNode.data.flowNode, ...updates })
+        .map((variable) => variable.name)
+    );
+    const removedNames = new Set(
+      Array.from(previousNames).filter((name) => !nextNames.has(name))
+    );
+    const affectedNodes = nodes.flatMap((node) => {
+      if (node.id === editingNodeId) return [];
+      const referenced = parseRequestVariableBindings(node.data.flowNode)
+        .filter((binding) => removedNames.has(binding.variableName))
+        .map((binding) => binding.variableName);
+      return referenced.length ? [{ node, referenced: Array.from(new Set(referenced)) }] : [];
+    });
+
+    if (!affectedNodes.length) {
+      applyNodeEditorSave(updates, removedNames);
+      return;
+    }
+
+    modal.confirm({
+      title: 'Remove downstream variable bindings?',
+      content: (
+        <div>
+          <p>
+            Removing or renaming {Array.from(removedNames).map((name) => `“${name}”`).join(', ')}
+            {' '}would leave {affectedNodes.length} downstream node{affectedNodes.length === 1 ? '' : 's'}
+            {' '}with invalid bindings.
+          </p>
+          <p>The affected bindings will be removed together.</p>
+        </div>
+      ),
+      okText: 'Remove bindings',
+      okButtonProps: { danger: true },
+      onOk: () => applyNodeEditorSave(updates, removedNames),
+    });
   };
 
   const handleSave = async () => {
@@ -346,6 +422,22 @@ function FlowDesignerCanvas({
     );
     if (hasDanglingEdge) {
       message.error('The flow contains a connection to a missing node');
+      return;
+    }
+
+    const definedVariables = new Set(nodes.flatMap((node) => (
+      parseResponseVariables(node.data.flowNode).map((variable) => variable.name)
+    )));
+    const danglingBinding = nodes.flatMap((node) => (
+      parseRequestVariableBindings(node.data.flowNode)
+        .filter((binding) => !definedVariables.has(binding.variableName))
+        .map((binding) => ({ node, binding }))
+    ))[0];
+    if (danglingBinding) {
+      message.error(
+        `Node ${danglingBinding.node.id} references missing flow variable “${danglingBinding.binding.variableName}”`
+      );
+      setEditingNodeId(danglingBinding.node.id);
       return;
     }
 
@@ -369,6 +461,7 @@ function FlowDesignerCanvas({
         edgeType: edge.data?.flowEdge.edgeType || 'default',
       })),
       viewport: getViewport(),
+      sharedHeadersJson,
     };
 
     try {
@@ -404,6 +497,11 @@ function FlowDesignerCanvas({
           </div>
         </div>
         <Space wrap>
+          <Badge count={parseHeaderEntries(sharedHeadersJson).length} size="small">
+            <Button icon={<GlobalOutlined />} onClick={() => setFlowHeadersOpen(true)}>
+              Flow Headers
+            </Button>
+          </Badge>
           {flow.id != null && onRun && (
             <Tooltip title={dirty ? 'Save the canvas before running it' : 'Run the saved flow'}>
               <span>
@@ -504,11 +602,25 @@ function FlowDesignerCanvas({
             reservedVariableNames={nodes
               .filter((node) => node.id !== editingNode.id)
               .flatMap((node) => parseResponseVariables(node.data.flowNode).map((variable) => variable.name))}
+            inheritedHeadersJson={sharedHeadersJson}
             onCancel={() => setEditingNodeId(undefined)}
             onSave={handleNodeEditorSave}
           />
         ) : null;
       })()}
+      <FlowHeadersModal
+        open={flowHeadersOpen}
+        value={sharedHeadersJson}
+        variableNames={Array.from(new Set(nodes.flatMap((node) => (
+          parseResponseVariables(node.data.flowNode).map((variable) => variable.name)
+        ))))}
+        onCancel={() => setFlowHeadersOpen(false)}
+        onSave={(value) => {
+          setSharedHeadersJson(value);
+          setFlowHeadersOpen(false);
+          setDirty(true);
+        }}
+      />
     </div>
   );
 }

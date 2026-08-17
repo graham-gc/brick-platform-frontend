@@ -29,6 +29,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
+import { conciseFlowError } from '@/features/run-result/error-summary';
 import type { BrickFlowRunNode } from '@/types';
 import styles from './run-detail.module.css';
 
@@ -248,7 +249,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       </div>
 
       <Card title="Execution Summary" className={styles.summaryCard}>
-        {run.errorMsg && <Alert type="error" showIcon title="Flow execution failed" description={run.errorMsg} style={{ marginBottom: 16 }} />}
+        {run.errorMsg && <Alert type="error" showIcon title="Flow execution failed" description={conciseFlowError(run.errorMsg)} style={{ marginBottom: 16 }} />}
         <Descriptions bordered column={{ xs: 1, sm: 2, lg: 4 }}>
           <Descriptions.Item label="Run ID">{run.id ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="Flow ID">{run.flowId ?? '-'}</Descriptions.Item>

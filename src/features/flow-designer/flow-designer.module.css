@@ -190,6 +190,10 @@
   gap: 10px;
 }
 
+.contextPrimaryRowSimple {
+  grid-template-columns: minmax(240px, 1fr) auto;
+}
+
 .filterBuilder {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) 110px minmax(180px, 0.8fr);
@@ -230,6 +234,51 @@
 
 .bindingRow {
   grid-template-columns: minmax(220px, 1.2fr) minmax(160px, 0.8fr) minmax(220px, 1fr) auto;
+}
+
+.bindingTargetGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.bindingTargetGroup :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.flowHeaderRow {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.75fr) minmax(300px, 1.25fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.flowHeaderRow :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.headerLayer {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.headerEntries {
+  display: grid;
+  gap: 8px;
+}
+
+.headerEntry {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.55fr) minmax(0, 1.45fr) auto;
+  align-items: center;
+  gap: 10px;
 }
 
 .contextRow :global(.ant-form-item),
@@ -282,6 +331,11 @@
   .filterBuilder,
   .customExpressionRow,
   .expressionPreview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .flowHeaderRow,
+  .headerEntry {
     grid-template-columns: minmax(0, 1fr);
   }
 }

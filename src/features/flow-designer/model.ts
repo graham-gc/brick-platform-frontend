@@ -22,4 +22,5 @@ export interface FlowCanvasSavePayload {
   nodes: BrickFlowNode[];
   edges: BrickFlowEdge[];
   viewport: Viewport;
+  sharedHeadersJson: string;
 }

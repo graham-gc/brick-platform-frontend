@@ -18,8 +18,9 @@ export type JsonPathFilterOperator = '==' | '!=' | '>' | '>=' | '<' | '<=';
 
 export interface FlowRequestVariableBinding {
   variableName: string;
-  targetType: 'BODY' | 'QUERY' | 'PATH';
+  targetType: 'BODY' | 'QUERY' | 'PATH' | 'HEADER';
   targetPath: string;
+  valueTemplate?: string;
 }
 
 export interface AvailableFlowVariable extends FlowResponseVariable {

@@ -39,6 +39,7 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
           viewportX: payload.viewport.x,
           viewportY: payload.viewport.y,
           viewportZoom: payload.viewport.zoom,
+          sharedHeadersJson: payload.sharedHeadersJson,
         },
         nodes: payload.nodes,
         edges: payload.edges,

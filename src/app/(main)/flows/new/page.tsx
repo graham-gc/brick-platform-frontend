@@ -61,6 +61,7 @@ export default function NewFlowPage() {
         viewportX: payload.viewport.x,
         viewportY: payload.viewport.y,
         viewportZoom: payload.viewport.zoom,
+        sharedHeadersJson: payload.sharedHeadersJson,
       },
       nodes: payload.nodes,
       edges: payload.edges,
@@ -86,6 +87,7 @@ export default function NewFlowPage() {
     env: selectedMapping?.env,
     status: 'draft',
     version: 1,
+    sharedHeadersJson: '{}',
   };
 
   const handleSave = async (payload: FlowCanvasSavePayload) => {
