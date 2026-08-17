@@ -10,14 +10,14 @@ type RouteParameters = {
 async function proxyRequest(
   request: NextRequest,
   { params }: RouteParameters,
-  method: 'GET' | 'POST'
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE'
 ) {
   const { path } = await params;
   const incomingUrl = new URL(request.url);
   const targetUrl = `${BACKEND_BASE_URL}/${path.join('/')}${incomingUrl.search}`;
 
   try {
-    const body = method === 'POST' ? await request.text() : undefined;
+    const body = method === 'POST' || method === 'PUT' ? await request.text() : undefined;
     const response = await fetch(targetUrl, {
       method,
       headers: {
@@ -48,4 +48,12 @@ export async function GET(request: NextRequest, context: RouteParameters) {
 
 export async function POST(request: NextRequest, context: RouteParameters) {
   return proxyRequest(request, context, 'POST');
+}
+
+export async function PUT(request: NextRequest, context: RouteParameters) {
+  return proxyRequest(request, context, 'PUT');
+}
+
+export async function DELETE(request: NextRequest, context: RouteParameters) {
+  return proxyRequest(request, context, 'DELETE');
 }
