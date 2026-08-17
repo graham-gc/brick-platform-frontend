@@ -910,13 +910,36 @@ export function NodeEditorModal({
                                     />
                                   </Form.Item>
                                   {needsFieldPath && (
-                                    <Form.Item
-                                      name={[field.name, 'fieldPath']}
-                                      label="Field Path"
-                                      rules={[{ required: true, message: 'Field path is required' }]}
-                                    >
-                                      <Input placeholder={assertionType === 'json_path' ? '$.data.name' : 'Content-Type'} />
-                                    </Form.Item>
+                                    assertionType === 'json_path' ? (
+                                      <Form.Item
+                                        name={[field.name, 'fieldPath']}
+                                        label="Field Path"
+                                        rules={[{ required: true, message: 'Field path is required' }]}
+                                      >
+                                        <TreeSelect
+                                          treeData={responseFields}
+                                          treeDefaultExpandAll
+                                          showSearch
+                                          treeNodeFilterProp="title"
+                                          loading={responseSchemaLoading}
+                                          placeholder="Select from response schema"
+                                        />
+                                      </Form.Item>
+                                    ) : (
+                                      <Form.Item
+                                        name={[field.name, 'fieldPath']}
+                                        label="Header Name"
+                                        rules={[{ required: true, message: 'Header name is required' }]}
+                                      >
+                                        <AutoComplete
+                                          options={headerFields.map((name) => ({ value: name }))}
+                                          placeholder="Content-Type"
+                                          filterOption={(input, option) =>
+                                            String(option?.value || '').toLowerCase().includes(input.toLowerCase())
+                                          }
+                                        />
+                                      </Form.Item>
+                                    )
                                   )}
                                   <Form.Item
                                     name={[field.name, 'operator']}
