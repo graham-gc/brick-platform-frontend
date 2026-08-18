@@ -122,6 +122,8 @@ export interface BrickFlowNode {
   pathVarsJson?: string;
   responseVariablesJson?: string;
   requestVariableBindingsJson?: string;
+  assertionsJson?: string;
+  assertions?: BrickFlowNodeAssertion[];
   x?: number;
   y?: number;
   nodeType?: string;
@@ -181,6 +183,7 @@ export interface BrickFlowRunNode {
   assertionPassedCount?: number;
   assertionFailedCount?: number;
   assertionSummary?: string;
+  assertions?: BrickFlowRunNodeAssertion[];
 }
 
 // BrickTestSuite
@@ -230,6 +233,9 @@ export interface BrickFlowRunNodeAssertion {
   actualValue?: string;
   expectedValue?: string;
   errorMsg?: string;
+  assertionType?: 'status_code' | 'json_path' | 'header' | 'response_time';
+  fieldPath?: string;
+  operator?: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'gt' | 'lt' | 'gte' | 'lte' | 'regex';
 }
 
 // Pagination

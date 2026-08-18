@@ -39,14 +39,7 @@ const STATUS_COLORS: Record<string, string> = {
   skipped: 'default',
 };
 
-function AssertionResults({ runNodeId }: { runNodeId: number }) {
-  const { data: assertions = [], isLoading } = useQuery({
-    queryKey: ['run-node-assertions', runNodeId],
-    queryFn: () => api.getRunNodeAssertions(runNodeId),
-  });
-
-  if (isLoading) return <Spin />;
-
+function AssertionResults({ assertions }: { assertions: BrickFlowRunNodeAssertion[] }) {
   if (assertions.length === 0) {
     return <Empty description="No assertion records found." />;
   }
@@ -71,19 +64,25 @@ function AssertionResults({ runNodeId }: { runNodeId: number }) {
               borderColor: assertion.status === 'passed' ? '#52c41a' : '#ff4d4f',
             }}
           >
-            <Space wrap>
-              <Tag color={assertion.status === 'passed' ? 'success' : 'error'}>
-                {assertion.status?.toUpperCase()}
-              </Tag>
-              <Typography.Text strong>{assertion.assertionId}</Typography.Text>
-              <Typography.Text type="secondary">
-                Expected: {assertion.expectedValue ?? '-'}
-              </Typography.Text>
-              {assertion.actualValue !== undefined && assertion.actualValue !== null && (
-                <Typography.Text type="secondary">
-                  Actual: {assertion.actualValue}
-                </Typography.Text>
-              )}
+            <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+              <Space>
+                <Tag color={assertion.status === 'passed' ? 'success' : 'error'}>
+                  {assertion.status?.toUpperCase()}
+                </Tag>
+                <Typography.Text strong>{assertion.assertionType?.replace('_', ' ') ?? 'assertion'}</Typography.Text>
+                {assertion.fieldPath && (
+                  <Typography.Text code>{assertion.fieldPath}</Typography.Text>
+                )}
+                {assertion.operator && (
+                  <Typography.Text type="secondary">{assertion.operator}</Typography.Text>
+                )}
+              </Space>
+              <Descriptions column={{ xs: 1, sm: 2 }} size="small">
+                <Descriptions.Item label="Expected">{assertion.expectedValue ?? '-'}</Descriptions.Item>
+                <Descriptions.Item label="Actual" style={{ color: assertion.status === 'failed' ? '#ff4d4f' : undefined }}>
+                  {assertion.actualValue ?? '-'}
+                </Descriptions.Item>
+              </Descriptions>
               {assertion.errorMsg && (
                 <Typography.Text type="danger">{assertion.errorMsg}</Typography.Text>
               )}
@@ -140,6 +139,7 @@ export function RunResultDrawer({
   onRunAgain,
 }: RunResultDrawerProps) {
   const [selection, setSelection] = useState<{ runId?: number; nodeKey?: Key }>({});
+  const [activeDetailTab, setActiveDetailTab] = useState<string>('overview');
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['run-detail', runId],
     queryFn: () => api.getRunDetail(runId!),
@@ -157,6 +157,22 @@ export function RunResultDrawer({
     : -1;
   const successfulNodes = nodes.filter((node) => node.status === 'success').length;
   const failedNodes = nodes.filter((node) => node.status === 'failed' || node.status === 'blocked').length;
+  const assertionFailures = nodes.reduce((sum, node) => sum + (node.assertionFailedCount ?? 0), 0);
+
+  // Find all nodes with assertion failures in order
+  const failureNodes = nodes
+    .map((node, index) => ({ node, index }))
+    .filter(({ node }) => (node.assertionFailedCount ?? 0) > 0);
+
+  const handleAssertionFailuresClick = () => {
+    if (failureNodes.length === 0) return;
+    const currentIdx = failureNodes.findIndex(
+      ({ node }) => nodeRowKey(node) === selectedNodeKey
+    );
+    const nextIdx = (currentIdx + 1) % failureNodes.length;
+    setSelection({ runId, nodeKey: nodeRowKey(failureNodes[nextIdx].node) });
+    setActiveDetailTab('assertions');
+  };
 
   const columns: ColumnsType<BrickFlowRunNode> = [
     {
@@ -256,7 +272,7 @@ export function RunResultDrawer({
       key: 'assertions',
       label: `Assertions (${selectedNode.assertionTotalCount ?? 0})`,
       children: selectedNode.assertionTotalCount ? (
-        <AssertionResults runNodeId={selectedNode.id!} />
+        <AssertionResults assertions={selectedNode.assertions || []} />
       ) : <Empty description="No assertions were evaluated for this node." />,
     },
   ] : [];
@@ -302,7 +318,17 @@ export function RunResultDrawer({
             <Card size="small"><Statistic title="Duration" value={run.durationMs ?? 0} suffix="ms" /></Card>
             <Card size="small"><Statistic title="Successful Nodes" value={successfulNodes} suffix={`/ ${nodes.length}`} /></Card>
             <Card size="small"><Statistic title="Failed / Blocked" value={failedNodes} /></Card>
-            <Card size="small"><Statistic title="Flow ID" value={run.flowId ?? '-'} /></Card>
+            <Card
+              size="small"
+              hoverable={assertionFailures > 0}
+              onClick={handleAssertionFailuresClick}
+            >
+              <Statistic
+                title="Assertion Failures"
+                value={assertionFailures}
+                styles={{ content: assertionFailures > 0 ? { color: '#ff4d4f', cursor: 'pointer' } : undefined }}
+              />
+            </Card>
           </div>
           {run.errorMsg && (
             <Alert
@@ -338,7 +364,7 @@ export function RunResultDrawer({
               className={styles.nodeDetailCard}
               extra={selectedNode && <Tag color={STATUS_COLORS[selectedNode.status || '']}>{selectedNode.status || '-'}</Tag>}
             >
-              {selectedNode ? <Tabs items={nodeTabs} /> : <Empty description="Select a node to inspect its result." />}
+              {selectedNode ? <Tabs items={nodeTabs} activeKey={activeDetailTab} onChange={setActiveDetailTab} /> : <Empty description="Select a node to inspect its result." />}
             </Card>
           </div>
         </>

@@ -4,7 +4,6 @@ import type {
   EndpointRequestDefinition,
   BrickFlow,
   BrickFlowNode,
-  BrickFlowNodeAssertion,
   BrickFlowRunNodeAssertion,
   BrickFlowEdge,
   BrickFlowRun,
@@ -275,35 +274,8 @@ export const deleteGlobalVariable = (id: number) =>
     method: 'POST',
   });
 
-// ==================== Node Assertion APIs ====================
-
-export const getNodeAssertions = (nodeId: number) =>
-  request<BrickFlowNodeAssertion[]>(`${API_BASE}/nodes/${nodeId}/assertions`);
-
-export const createNodeAssertions = (
-  nodeId: number,
-  assertions: BrickFlowNodeAssertion[],
-  operator?: string
-) =>
-  request<number>(`${API_BASE}/nodes/${nodeId}/assertions?operator=${operator || ''}`, {
-    method: 'POST',
-    body: JSON.stringify(assertions),
-  });
-
-export const updateNodeAssertions = (
-  nodeId: number,
-  assertions: BrickFlowNodeAssertion[],
-  operator?: string
-) =>
-  request<number>(`${API_BASE}/nodes/${nodeId}/assertions?operator=${operator || ''}`, {
-    method: 'PUT',
-    body: JSON.stringify(assertions),
-  });
-
-export const deleteNodeAssertions = (nodeId: number) =>
-  request<number>(`${API_BASE}/nodes/${nodeId}/assertions`, {
-    method: 'DELETE',
-  });
+// ==================== Run Node Assertion APIs ====================
 
 export const getRunNodeAssertions = (runNodeId: number) =>
   request<BrickFlowRunNodeAssertion[]>(`${API_BASE}/run-nodes/${runNodeId}/assertions`);
+

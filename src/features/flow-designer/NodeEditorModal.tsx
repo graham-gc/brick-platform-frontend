@@ -1,12 +1,11 @@
 'use client';
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Alert, AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tabs, Tag, TreeSelect, Typography, message } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { Alert, AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tabs, Tag, TreeSelect, Typography } from 'antd';
 import type { Rule } from 'antd/es/form';
 import * as api from '@/services/api';
-import type { BrickFlowNode, BrickFlowNodeAssertion, EndpointParameterDefinition } from '@/types';
+import type { BrickFlowNode, EndpointParameterDefinition } from '@/types';
 import type { HttpCanvasNode } from './model';
 import {
   arrayFilterFieldOptions,
@@ -132,12 +131,6 @@ export function NodeEditorModal({
     enabled: endpoint?.id != null,
   });
 
-  const { data: assertionsData = [], refetch: refetchAssertions } = useQuery({
-    queryKey: ['node-assertions', flowNode.id],
-    queryFn: () => api.getNodeAssertions(flowNode.id!),
-    enabled: !!flowNode.id,
-  });
-
   const initialValues: NodeEditorValues = {
     payloadJson: flowNode.payloadJson?.trim()
       ? prettyStoredJson(flowNode.payloadJson, {})
@@ -152,36 +145,29 @@ export function NodeEditorModal({
     joinMode: flowNode.joinMode ?? 'ALL',
     responseVariables: parseResponseVariables(flowNode),
     requestBindings: parseRequestVariableBindings(flowNode),
-    assertions: assertionsData.map((a): AssertionFormItem => ({
-      id: a.id,
-      assertionType: a.assertionType ?? 'status_code',
-      fieldPath: a.fieldPath ?? '',
-      operator: a.operator ?? 'equals',
-      expectedValue: a.expectedValue ?? '',
-      isEnabled: !!a.isEnabled,
-    })),
+    assertions: (() => {
+      try {
+        // Prefer array from backend, fall back to parsed JSON string
+        const source = Array.isArray(flowNode.assertions)
+          ? flowNode.assertions
+          : flowNode.assertionsJson
+            ? JSON.parse(flowNode.assertionsJson)
+            : [];
+        return Array.isArray(source) ? source.map((a): AssertionFormItem => ({
+          id: a.id,
+          assertionType: a.assertionType ?? 'status_code',
+          fieldPath: a.fieldPath ?? '',
+          operator: a.operator ?? 'equals',
+          expectedValue: a.expectedValue ?? '',
+          isEnabled: !!a.isEnabled,
+        })) : [];
+      } catch {
+        return [];
+      }
+    })(),
   };
   const payloadJson = Form.useWatch('payloadJson', form) ?? initialValues.payloadJson;
   const requestBindings = Form.useWatch('requestBindings', form) ?? initialValues.requestBindings;
-  const [messageApi, contextHolder] = message.useMessage();
-
-  const saveAssertionsMutation = useMutation({
-    mutationFn: (assertions: BrickFlowNodeAssertion[]) =>
-      api.updateNodeAssertions(flowNode.id!, assertions, 'admin'),
-  });
-
-  useEffect(() => {
-    if (saveAssertionsMutation.isSuccess) {
-      messageApi.success('Assertions saved');
-      refetchAssertions();
-    }
-  }, [saveAssertionsMutation.isSuccess, messageApi, refetchAssertions]);
-
-  useEffect(() => {
-    if (saveAssertionsMutation.isError) {
-      messageApi.error(saveAssertionsMutation.error?.message ?? 'Failed to save assertions');
-    }
-  }, [saveAssertionsMutation.isError, saveAssertionsMutation.error, messageApi]);
   const resolvedDefinition = endpointDetail?.resolvedRequestDefinition
     || endpointDetail?.requestDefinition
     || definition;
@@ -276,10 +262,9 @@ export function NodeEditorModal({
       onCancel={onCancel}
       onOk={() => {
         void form.validateFields().then((values) => {
-          const assertionsPayload: BrickFlowNodeAssertion[] = (values.assertions || []).map(
+          const assertionsPayload = (values.assertions || []).map(
             (item: AssertionFormItem) => ({
               id: item.id,
-              nodeId: flowNode.id,
               assertionType: item.assertionType,
               fieldPath: item.fieldPath || undefined,
               operator: item.operator,
@@ -299,15 +284,12 @@ export function NodeEditorModal({
               prepareResponseVariablesForSave(values.responseVariables)
             ),
             requestVariableBindingsJson: JSON.stringify(values.requestBindings || []),
+            assertions: assertionsPayload,
           });
-          if (flowNode.id) {
-            void saveAssertionsMutation.mutateAsync(assertionsPayload);
-          }
         });
       }}
       destroyOnHidden
     >
-      {contextHolder}
       <Form form={form} layout="vertical" initialValues={initialValues}>
         <Tabs
           defaultActiveKey={missingVariableNames.length ? 'variableBindings' : undefined}
