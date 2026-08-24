@@ -9,6 +9,9 @@ import type {
   BrickFlowRun,
   BrickFlowRunNode,
   BrickTestSuite,
+  BrickTestSuiteFlowMapping,
+  BrickTestSuiteRun,
+  BrickTestSuiteFlowRun,
   BrickGlobalVariable,
   PaginatedResponse,
   ValidateParseRequest,
@@ -227,15 +230,41 @@ export const getTestSuiteDetail = (id: number) =>
     `${API_BASE}/test-suites/${id}`
   );
 
-export const createTestSuite = (suite: BrickTestSuite, flowMappings: unknown[], operator?: string) =>
+export const createTestSuite = (
+  suite: BrickTestSuite,
+  flowMappings: BrickTestSuiteFlowMapping[],
+  operator?: string
+) =>
   request<number>(`${API_BASE}/test-suites`, {
     method: 'POST',
     body: JSON.stringify({ suite, flowMappings, operator }),
   });
 
+export const updateTestSuite = (
+  suite: BrickTestSuite,
+  flowMappings: BrickTestSuiteFlowMapping[],
+  operator?: string
+) => request<number>(`${API_BASE}/test-suites/update`, {
+  method: 'POST',
+  body: JSON.stringify({ suite, flowMappings, operator }),
+});
+
 export const runTestSuite = (id: number, operator?: string) =>
-  request<BrickFlowRun>(`${API_BASE}/test-suites/${id}/run?operator=${operator || ''}`, {
+  request<BrickTestSuiteRun>(`${API_BASE}/test-suites/${id}/run?operator=${operator || ''}`, {
     method: 'POST',
+  });
+
+export const getTestSuiteRunDetail = (runId: number) =>
+  request<{
+    suiteRun: BrickTestSuiteRun;
+    suite: BrickTestSuite;
+    flowRuns: BrickTestSuiteFlowRun[];
+  }>(`${API_BASE}/test-suites/runs/${runId}`);
+
+export const rerunFailedTestSuiteFlows = (suiteRunId: number, operator?: string) =>
+  request<BrickTestSuiteRun>(`${API_BASE}/test-suites/rerunFailed`, {
+    method: 'POST',
+    body: JSON.stringify({ suiteRunId, operator }),
   });
 
 export const deleteTestSuite = (id: number) =>
@@ -278,4 +307,3 @@ export const deleteGlobalVariable = (id: number) =>
 
 export const getRunNodeAssertions = (runNodeId: number) =>
   request<BrickFlowRunNodeAssertion[]>(`${API_BASE}/run-nodes/${runNodeId}/assertions`);
-

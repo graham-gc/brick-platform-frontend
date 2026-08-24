@@ -29,6 +29,7 @@ import Link from 'next/link';
 import * as api from '@/services/api';
 import type { BrickFlowRunNode, BrickFlowRunNodeAssertion } from '@/types';
 import { conciseFlowError } from './error-summary';
+import { BUSINESS_STATUS_COLORS, businessStatusLabel } from './status';
 import styles from './run-result-drawer.module.css';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -151,6 +152,7 @@ export function RunResultDrawer({
   const selectedNodeKey = selection.runId === runId ? selection.nodeKey : undefined;
   const selectedNode = nodes.find((node) => nodeRowKey(node) === selectedNodeKey)
     || nodes.find((node) => node.status === 'failed' || node.status === 'blocked')
+    || nodes.find((node) => node.businessStatus === 'failed')
     || nodes[0];
   const selectedNodeIndex = selectedNode
     ? nodes.findIndex((node) => nodeRowKey(node) === nodeRowKey(selectedNode))
@@ -193,12 +195,23 @@ export function RunResultDrawer({
       ),
     },
     {
-      title: 'Result',
+      title: 'Request',
       dataIndex: 'status',
       key: 'status',
       width: 104,
       render: (status) => (
         <Tag color={STATUS_COLORS[status || '']} icon={statusIcon(status)}>{status || '-'}</Tag>
+      ),
+    },
+    {
+      title: 'Business',
+      dataIndex: 'businessStatus',
+      key: 'businessStatus',
+      width: 120,
+      render: (businessStatus) => (
+        <Tag color={BUSINESS_STATUS_COLORS[businessStatus || 'not_evaluated']}>
+          {businessStatusLabel(businessStatus)}
+        </Tag>
       ),
     },
     {
@@ -227,8 +240,13 @@ export function RunResultDrawer({
           <Descriptions bordered column={{ xs: 1, md: 2 }} size="small">
             <Descriptions.Item label="Node ID">{selectedNode.nodeId ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="Endpoint ID">{selectedNode.endpointId ?? '-'}</Descriptions.Item>
-            <Descriptions.Item label="Status">
+            <Descriptions.Item label="Request Status">
               <Tag color={STATUS_COLORS[selectedNode.status || '']}>{selectedNode.status || '-'}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Business Result">
+              <Tag color={BUSINESS_STATUS_COLORS[selectedNode.businessStatus || 'not_evaluated']}>
+                {businessStatusLabel(selectedNode.businessStatus)}
+              </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="HTTP Status">{selectedNode.httpStatus ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="Duration">
@@ -273,7 +291,12 @@ export function RunResultDrawer({
       label: `Assertions (${selectedNode.assertionTotalCount ?? 0})`,
       children: selectedNode.assertionTotalCount ? (
         <AssertionResults assertions={selectedNode.assertions || []} />
-      ) : <Empty description="No assertions were evaluated for this node." />,
+      ) : (
+        <Empty description={selectedNode.businessStatus === 'not_evaluated'
+          ? 'Assertions were not evaluated because the request did not complete.'
+          : 'No enabled assertions are configured for this node.'}
+        />
+      ),
     },
   ] : [];
 
@@ -285,7 +308,12 @@ export function RunResultDrawer({
       title={run ? (
         <Space wrap>
           <span>Run Result #{run.id}</span>
-          <Tag color={STATUS_COLORS[run.status || '']} icon={statusIcon(run.status)}>{run.status || '-'}</Tag>
+          <Tag color={STATUS_COLORS[run.status || '']} icon={statusIcon(run.status)}>
+            Request: {run.status || '-'}
+          </Tag>
+          <Tag color={BUSINESS_STATUS_COLORS[run.businessStatus || 'not_evaluated']}>
+            Business: {businessStatusLabel(run.businessStatus)}
+          </Tag>
         </Space>
       ) : 'Run Result'}
       destroyOnHidden
@@ -316,8 +344,9 @@ export function RunResultDrawer({
         <>
           <div className={styles.metricGrid}>
             <Card size="small"><Statistic title="Duration" value={run.durationMs ?? 0} suffix="ms" /></Card>
-            <Card size="small"><Statistic title="Successful Nodes" value={successfulNodes} suffix={`/ ${nodes.length}`} /></Card>
-            <Card size="small"><Statistic title="Failed / Blocked" value={failedNodes} /></Card>
+            <Card size="small"><Statistic title="Business Result" value={businessStatusLabel(run.businessStatus)} /></Card>
+            <Card size="small"><Statistic title="Successful Requests" value={successfulNodes} suffix={`/ ${nodes.length}`} /></Card>
+            <Card size="small"><Statistic title="Request Failed / Blocked" value={failedNodes} /></Card>
             <Card
               size="small"
               hoverable={assertionFailures > 0}
@@ -335,8 +364,17 @@ export function RunResultDrawer({
               className={styles.runAlert}
               type="error"
               showIcon
-              title="Flow execution completed with failures"
+              title="Flow request execution failed"
               description={conciseFlowError(run.errorMsg)}
+            />
+          )}
+          {run.businessStatus === 'failed' && (
+            <Alert
+              className={styles.runAlert}
+              type="warning"
+              showIcon
+              title="Flow requests completed, but business validation failed"
+              description={`${assertionFailures} assertion${assertionFailures === 1 ? '' : 's'} did not meet the expected result.`}
             />
           )}
           <div className={styles.resultGrid}>
@@ -362,7 +400,14 @@ export function RunResultDrawer({
               title={selectedNode ? `Step ${selectedNodeIndex + 1} Details` : 'Node Details'}
               size="small"
               className={styles.nodeDetailCard}
-              extra={selectedNode && <Tag color={STATUS_COLORS[selectedNode.status || '']}>{selectedNode.status || '-'}</Tag>}
+              extra={selectedNode && (
+                <Space wrap>
+                  <Tag color={STATUS_COLORS[selectedNode.status || '']}>Request: {selectedNode.status || '-'}</Tag>
+                  <Tag color={BUSINESS_STATUS_COLORS[selectedNode.businessStatus || 'not_evaluated']}>
+                    Business: {businessStatusLabel(selectedNode.businessStatus)}
+                  </Tag>
+                </Space>
+              )}
             >
               {selectedNode ? <Tabs items={nodeTabs} activeKey={activeDetailTab} onChange={setActiveDetailTab} /> : <Empty description="Select a node to inspect its result." />}
             </Card>

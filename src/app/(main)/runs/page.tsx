@@ -8,6 +8,7 @@ import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
 import { MappingSelector } from '@/components/MappingSelector';
+import { BUSINESS_STATUS_COLORS, businessStatusLabel } from '@/features/run-result/status';
 
 const STATUS_COLORS: Record<string, string> = {
   running: 'processing',
@@ -37,9 +38,14 @@ export default function RunsPage() {
   const columns: ColumnsType<Record<string, unknown>> = [
     { title: 'ID', dataIndex: 'id', key: 'id', responsive: ['md'], render: (v) => String(v) },
     { title: 'Flow ID', dataIndex: 'flowId', key: 'flowId', responsive: ['sm'] },
-    { title: 'Status', dataIndex: 'status', key: 'status', render: (s) => (
+    { title: 'Request Status', dataIndex: 'status', key: 'status', render: (s) => (
       <Tag color={STATUS_COLORS[s]} icon={s === 'running' ? <LoadingOutlined /> : s === 'success' ? <CheckCircleOutlined /> : s === 'failed' ? <CloseCircleOutlined /> : null}>
         {s}
+      </Tag>
+    )},
+    { title: 'Business Result', dataIndex: 'businessStatus', key: 'businessStatus', render: (businessStatus) => (
+      <Tag color={BUSINESS_STATUS_COLORS[businessStatus || 'not_evaluated']}>
+        {businessStatusLabel(businessStatus)}
       </Tag>
     )},
     { title: 'Triggered By', dataIndex: 'triggeredBy', key: 'triggeredBy', responsive: ['lg'] },
@@ -78,7 +84,7 @@ export default function RunsPage() {
             />
           </Space>
           <Space orientation="vertical" size={4}>
-            <span>Status</span>
+            <span>Request Status</span>
             <Select
               placeholder="All statuses"
               className="responsive-filter-control"

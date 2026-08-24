@@ -70,10 +70,12 @@ export default function FlowsPage() {
       }
       setResultRunId(run.id);
       setResultFlowId(flowId);
-      if (run.status === 'success') {
-        message.success(`Flow completed in ${run.durationMs ?? 0} ms`);
+      if (run.status !== 'success') {
+        message.error('Flow request execution failed');
+      } else if (run.businessStatus === 'failed') {
+        message.warning('Requests completed, but business validation failed');
       } else {
-        message.warning('Flow completed with failures');
+        message.success(`Flow completed in ${run.durationMs ?? 0} ms`);
       }
     },
     onError: (err: Error) => message.error(err.message),

@@ -64,10 +64,12 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
         return;
       }
       setResultRunId(run.id);
-      if (run.status === 'success') {
-        message.success(`Flow completed in ${run.durationMs ?? 0} ms`);
+      if (run.status !== 'success') {
+        message.error('Flow request execution failed');
+      } else if (run.businessStatus === 'failed') {
+        message.warning('Requests completed, but business validation failed');
       } else {
-        message.warning('Flow completed with failures');
+        message.success(`Flow completed in ${run.durationMs ?? 0} ms`);
       }
     },
     onError: (error: Error) => message.error(error.message),

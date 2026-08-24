@@ -858,7 +858,7 @@ export function NodeEditorModal({
                     type="info"
                     showIcon
                     title="Configure assertions to validate the response from this node."
-                    description="Assertions run after the node receives a response. Failed assertions mark the node as failed."
+                    description="Assertions evaluate business expectations without changing the request execution status or blocking downstream nodes."
                   />
                   <Form.List name="assertions">
                     {(fields, { add, remove }) => (

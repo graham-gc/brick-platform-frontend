@@ -149,6 +149,7 @@ export interface BrickFlowRun {
   id?: number;
   flowId?: number;
   status?: string;
+  businessStatus?: 'passed' | 'failed' | 'not_configured' | 'not_evaluated';
   triggeredBy?: string;
   runType?: number;
   durationMs?: number;
@@ -164,6 +165,7 @@ export interface BrickFlowRunNode {
   nodeId?: number;
   endpointId?: number;
   status?: string;
+  businessStatus?: 'passed' | 'failed' | 'not_configured' | 'not_evaluated';
   httpStatus?: number;
   durationMs?: number;
   startTime?: string;
@@ -192,10 +194,50 @@ export interface BrickTestSuite {
   name?: string;
   env?: string;
   swaggerMappingId?: number;
+  appConfigId?: string;
   description?: string;
   isDeleted?: number;
   createBy?: string;
   createTime?: string;
+}
+
+export interface BrickTestSuiteFlowMapping {
+  id?: number;
+  suiteId?: number;
+  flowId: number;
+  executionOrder: number;
+}
+
+export interface BrickTestSuiteRun {
+  id?: number;
+  suiteId?: number;
+  status?: string;
+  businessStatus?: 'passed' | 'failed' | 'not_configured' | 'not_evaluated';
+  operator?: string;
+  totalFlows?: number;
+  successFlows?: number;
+  failedFlows?: number;
+  businessPassedFlows?: number;
+  businessFailedFlows?: number;
+  businessNotConfiguredFlows?: number;
+  businessNotEvaluatedFlows?: number;
+  durationMs?: number;
+  startTime?: string;
+  endTime?: string;
+  errorMsg?: string;
+}
+
+export interface BrickTestSuiteFlowRun {
+  id: number;
+  flowId: number;
+  flowName?: string;
+  status?: string;
+  businessStatus?: 'passed' | 'failed' | 'not_configured' | 'not_evaluated';
+  durationMs?: number;
+  errorMsg?: string;
+  startTime?: string;
+  endTime?: string;
+  triggeredBy?: string;
 }
 
 // BrickGlobalVariable

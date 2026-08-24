@@ -30,6 +30,7 @@ import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
 import { conciseFlowError } from '@/features/run-result/error-summary';
+import { BUSINESS_STATUS_COLORS, businessStatusLabel } from '@/features/run-result/status';
 import type { BrickFlowRunNode } from '@/types';
 import styles from './run-detail.module.css';
 
@@ -105,7 +106,10 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const selectedNode = nodes.find((node) => nodeRowKey(node) === selectedNodeKey) || nodes[0];
   const selectedNodeIndex = selectedNode ? nodes.findIndex((node) => nodeRowKey(node) === nodeRowKey(selectedNode)) : -1;
   const successCount = nodes.filter((node) => node.status === 'success').length;
-  const failedCount = nodes.filter((node) => node.status === 'failed').length;
+  const failedCount = nodes.filter((node) => node.status === 'failed' || node.status === 'blocked').length;
+  const assertionFailureCount = nodes.reduce(
+    (total, node) => total + (node.assertionFailedCount ?? 0), 0
+  );
 
   const columns: ColumnsType<BrickFlowRunNode> = [
     {
@@ -136,11 +140,21 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       ),
     },
     {
-      title: 'Result',
+      title: 'Request Status',
       dataIndex: 'status',
       key: 'status',
       render: (nodeStatus) => (
         <Tag color={STATUS_COLORS[nodeStatus || '']} icon={statusIcon(nodeStatus)}>{nodeStatus || '-'}</Tag>
+      ),
+    },
+    {
+      title: 'Business Result',
+      dataIndex: 'businessStatus',
+      key: 'businessStatus',
+      render: (businessStatus) => (
+        <Tag color={BUSINESS_STATUS_COLORS[businessStatus || 'not_evaluated']}>
+          {businessStatusLabel(businessStatus)}
+        </Tag>
       ),
     },
     {
@@ -169,8 +183,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           <Descriptions bordered column={{ xs: 1, sm: 2, lg: 3 }}>
             <Descriptions.Item label="Node ID">{selectedNode.nodeId ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="Endpoint ID">{selectedNode.endpointId ?? '-'}</Descriptions.Item>
-            <Descriptions.Item label="Status">
+            <Descriptions.Item label="Request Status">
               <Tag color={STATUS_COLORS[selectedNode.status || '']} icon={statusIcon(selectedNode.status)}>{selectedNode.status || '-'}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Business Result">
+              <Tag color={BUSINESS_STATUS_COLORS[selectedNode.businessStatus || 'not_evaluated']}>
+                {businessStatusLabel(selectedNode.businessStatus)}
+              </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="HTTP Method">{selectedNode.requestMethod || '-'}</Descriptions.Item>
             <Descriptions.Item label="HTTP Status">{selectedNode.httpStatus ?? '-'}</Descriptions.Item>
@@ -219,7 +238,10 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         </Descriptions>
       ) : (
         <div className={styles.assertionPlaceholder}>
-          <Empty description="No assertions were evaluated for this node." />
+          <Empty description={selectedNode.businessStatus === 'not_evaluated'
+            ? 'Assertions were not evaluated because the request did not complete.'
+            : 'No enabled assertions are configured for this node.'}
+          />
         </div>
       ),
     },
@@ -242,14 +264,25 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       </header>
 
       <div className={styles.metricGrid}>
-        <Card><Statistic title="Run Status" value={run.status || '-'} prefix={statusIcon(run.status)} /></Card>
+        <Card><Statistic title="Request Execution" value={run.status || '-'} prefix={statusIcon(run.status)} /></Card>
+        <Card><Statistic title="Business Result" value={businessStatusLabel(run.businessStatus)} /></Card>
         <Card><Statistic title="Duration" value={run.durationMs ?? 0} suffix="ms" /></Card>
-        <Card><Statistic title="Successful Nodes" value={successCount} suffix={`/ ${nodes.length}`} /></Card>
-        <Card><Statistic title="Failed Nodes" value={failedCount} /></Card>
+        <Card><Statistic title="Successful Requests" value={successCount} suffix={`/ ${nodes.length}`} /></Card>
+        <Card><Statistic title="Request Failed / Blocked" value={failedCount} /></Card>
+        <Card><Statistic title="Assertion Failures" value={assertionFailureCount} /></Card>
       </div>
 
       <Card title="Execution Summary" className={styles.summaryCard}>
-        {run.errorMsg && <Alert type="error" showIcon title="Flow execution failed" description={conciseFlowError(run.errorMsg)} style={{ marginBottom: 16 }} />}
+        {run.errorMsg && <Alert type="error" showIcon title="Flow request execution failed" description={conciseFlowError(run.errorMsg)} style={{ marginBottom: 16 }} />}
+        {run.businessStatus === 'failed' && (
+          <Alert
+            type="warning"
+            showIcon
+            title="Flow requests completed, but business validation failed"
+            description={`${assertionFailureCount} assertion${assertionFailureCount === 1 ? '' : 's'} did not meet the expected result.`}
+            style={{ marginBottom: 16 }}
+          />
+        )}
         <Descriptions bordered column={{ xs: 1, sm: 2, lg: 4 }}>
           <Descriptions.Item label="Run ID">{run.id ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="Flow ID">{run.flowId ?? '-'}</Descriptions.Item>
@@ -258,8 +291,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           <Descriptions.Item label="Started At">{run.startTime || '-'}</Descriptions.Item>
           <Descriptions.Item label="Ended At">{run.endTime || '-'}</Descriptions.Item>
           <Descriptions.Item label="Duration">{run.durationMs == null ? '-' : `${run.durationMs} ms`}</Descriptions.Item>
-          <Descriptions.Item label="Status">
+          <Descriptions.Item label="Request Status">
             <Tag color={STATUS_COLORS[run.status || '']} icon={statusIcon(run.status)}>{run.status || '-'}</Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="Business Result">
+            <Tag color={BUSINESS_STATUS_COLORS[run.businessStatus || 'not_evaluated']}>
+              {businessStatusLabel(run.businessStatus)}
+            </Tag>
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -285,7 +323,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         <Card
           title={`Step ${selectedNodeIndex + 1} Details`}
           className={styles.detailCard}
-          extra={<Tag color={STATUS_COLORS[selectedNode.status || '']}>{selectedNode.status || '-'}</Tag>}
+          extra={(
+            <Space wrap>
+              <Tag color={STATUS_COLORS[selectedNode.status || '']}>Request: {selectedNode.status || '-'}</Tag>
+              <Tag color={BUSINESS_STATUS_COLORS[selectedNode.businessStatus || 'not_evaluated']}>
+                Business: {businessStatusLabel(selectedNode.businessStatus)}
+              </Tag>
+            </Space>
+          )}
         >
           <Tabs items={nodeTabs} />
         </Card>
