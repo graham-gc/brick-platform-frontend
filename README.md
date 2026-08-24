@@ -18,6 +18,7 @@ The Spring Boot service and complete local setup are available in [brick-platfor
 - Add status-code, JSONPath, response-header, and response-time assertions
 - Run individual flows or ordered Test Suites and inspect transport and business outcomes separately
 - Review node-level request, response, assertion, timing, and error details
+- Correlate browser, proxy, and backend activity through `X-Request-ID`
 
 ## Technology
 
@@ -41,13 +42,29 @@ flowchart LR
 
 ## Run locally
 
-### Prerequisites
+### Docker image
+
+The production image uses Next.js standalone output and runs as a non-root user.
+
+```bash
+docker build -t brick-platform-frontend .
+docker run --rm \
+  -p 3000:3000 \
+  -e API_BASE_URL=http://host.docker.internal:8080/api/brick \
+  brick-platform-frontend
+```
+
+Open [http://localhost:3000](http://localhost:3000). The backend repository also provides a Docker Compose file that starts the frontend, backend, MySQL, and mock commerce API together.
+
+### Local development
+
+#### Prerequisites
 
 - Node.js 20.9 or later
 - npm
 - A running [Brick Platform backend](https://github.com/graham-gc/brick-platform-backend)
 
-### Install and start
+#### Install and start
 
 ```bash
 npm ci
@@ -66,6 +83,7 @@ npm run build
 ```
 
 GitHub Actions runs both checks for pushes to `main` and for pull requests.
+It also builds the production container image to keep the Docker deployment path verified.
 
 ## Main routes
 
