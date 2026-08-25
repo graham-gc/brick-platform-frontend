@@ -14,6 +14,55 @@ The product problem was fragmented API scripts and repeated manual execution. Th
 
 The implementation reflects a full delivery lifecycle rather than a UI exercise: requirements are translated into explicit interaction rules, error states are designed for diagnosis, layouts adapt to different window sizes, and the public demo can be handed to another engineer without access to the original workplace.
 
+## Product preview
+
+### Visual workflow composition
+
+![A five-step commerce API test flow composed on the Brick Platform canvas](public/screenshots/03-flow-designer.png)
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="public/screenshots/01-swagger-import.png" alt="Swagger JSON validation and import" />
+      <br /><sub><strong>Contract import:</strong> validate a local Swagger/OpenAPI document before creating a mapping.</sub>
+    </td>
+    <td width="50%">
+      <img src="public/screenshots/02-endpoint-details.png" alt="Endpoint request schema and example inspection" />
+      <br /><sub><strong>Contract inspection:</strong> review request metadata, recursively resolved schemas, and generated examples.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="public/screenshots/04-response-variable.png" alt="Extracting a product ID from an array response" />
+      <br /><sub><strong>Response extraction:</strong> select an array item and expose it as a flow-scoped variable.</sub>
+    </td>
+    <td width="50%">
+      <img src="public/screenshots/05-variable-binding.png" alt="Binding a product ID into a downstream request body" />
+      <br /><sub><strong>Downstream binding:</strong> assign an upstream value to a schema-derived request field.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="public/screenshots/06-global-function.png" alt="Configuring a reusable JavaScript global function" />
+      <br /><sub><strong>Reusable test data:</strong> define a bounded JavaScript function with typed parameters.</sub>
+    </td>
+    <td width="50%">
+      <img src="public/screenshots/07-request-body.png" alt="Editing a nested order request body" />
+      <br /><sub><strong>Node configuration:</strong> edit a nested request generated from the endpoint definition.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="public/screenshots/08-business-failure.png" alt="Run result showing successful requests and a failed business assertion" />
+      <br /><sub><strong>Outcome separation:</strong> all HTTP requests succeeded while one business assertion failed.</sub>
+    </td>
+    <td width="50%">
+      <img src="public/screenshots/09-run-details.png" alt="Persisted flow run and node execution details" />
+      <br /><sub><strong>Diagnostics:</strong> inspect persisted flow, node, timing, request, response, and assertion results.</sub>
+    </td>
+  </tr>
+</table>
+
 ## Core experience
 
 ### Import and inspect API contracts

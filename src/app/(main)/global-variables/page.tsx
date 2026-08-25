@@ -373,11 +373,11 @@ export default function GlobalVariablesPage() {
               <Form.List name="parameters">
                 {(fields, { add, remove }) => (
                   <Form.Item label="Parameters" style={{ marginBottom: 16 }}>
-                    {fields.map((field) => (
-                      <div key={field.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 140px 32px', gap: 8, marginBottom: 8 }}>
+                    {fields.map(({ key, name, ...fieldProps }) => (
+                      <div key={key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 140px 32px', gap: 8, marginBottom: 8 }}>
                         <Form.Item
-                          {...field}
-                          name={[field.name, 'name']}
+                          {...fieldProps}
+                          name={[name, 'name']}
                           rules={[
                             { required: true, message: 'Enter a parameter name' },
                             { pattern: /^[A-Za-z_][A-Za-z0-9_]*$/, message: 'Invalid name' },
@@ -387,8 +387,8 @@ export default function GlobalVariablesPage() {
                           <Input placeholder="length" />
                         </Form.Item>
                         <Form.Item
-                          {...field}
-                          name={[field.name, 'type']}
+                          {...fieldProps}
+                          name={[name, 'type']}
                           initialValue="string"
                           rules={[{ required: true, message: 'Select a type' }]}
                           noStyle
@@ -400,7 +400,7 @@ export default function GlobalVariablesPage() {
                           danger
                           icon={<MinusCircleOutlined />}
                           aria-label="Remove parameter"
-                          onClick={() => remove(field.name)}
+                          onClick={() => remove(name)}
                         />
                       </div>
                     ))}
@@ -442,11 +442,11 @@ export default function GlobalVariablesPage() {
               <Form.List name="parameters">
                 {(fields, { add, remove }) => (
                   <Form.Item label="Named SQL Parameters" style={{ marginBottom: 16 }}>
-                    {fields.map((field) => (
-                      <div key={field.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 140px 32px', gap: 8, marginBottom: 8 }}>
+                    {fields.map(({ key, name, ...fieldProps }) => (
+                      <div key={key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 140px 32px', gap: 8, marginBottom: 8 }}>
                         <Form.Item
-                          {...field}
-                          name={[field.name, 'name']}
+                          {...fieldProps}
+                          name={[name, 'name']}
                           rules={[
                             { required: true, message: 'Enter a parameter name' },
                             { pattern: /^[A-Za-z_][A-Za-z0-9_]*$/, message: 'Invalid name' },
@@ -456,8 +456,8 @@ export default function GlobalVariablesPage() {
                           <Input placeholder="orderId" />
                         </Form.Item>
                         <Form.Item
-                          {...field}
-                          name={[field.name, 'type']}
+                          {...fieldProps}
+                          name={[name, 'type']}
                           initialValue="string"
                           rules={[{ required: true, message: 'Select a type' }]}
                           noStyle
@@ -469,7 +469,7 @@ export default function GlobalVariablesPage() {
                           danger
                           icon={<MinusCircleOutlined />}
                           aria-label="Remove parameter"
-                          onClick={() => remove(field.name)}
+                          onClick={() => remove(name)}
                         />
                       </div>
                     ))}
