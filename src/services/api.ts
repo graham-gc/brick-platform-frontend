@@ -13,6 +13,7 @@ import type {
   BrickTestSuiteRun,
   BrickTestSuiteFlowRun,
   BrickGlobalVariable,
+  GlobalVariableDataSourceDescriptor,
   PaginatedResponse,
   ValidateParseRequest,
   ValidateParseResult,
@@ -282,6 +283,9 @@ export const getGlobalVariables = (query?: Partial<BrickGlobalVariable>) => {
     `${API_BASE}/global-variables?${params.toString()}`
   );
 };
+
+export const getGlobalVariableDataSources = () =>
+  request<GlobalVariableDataSourceDescriptor[]>(`${API_BASE}/global-variables/data-sources`);
 
 export const getGlobalVariableById = (id: number) =>
   request<BrickGlobalVariable>(`${API_BASE}/global-variables/${id}`);

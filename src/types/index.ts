@@ -250,9 +250,18 @@ export interface BrickGlobalVariable {
   isEnabled?: number;
   category?: string;
   syntax?: string;
+  hasParams?: number;
+  example?: string;
+  sampleResult?: string;
+  paramSchema?: string;
   dataType?: string;
   createBy?: string;
   createTime?: string;
+}
+
+export interface GlobalVariableDataSourceDescriptor {
+  id: string;
+  name: string;
 }
 
 // BrickFlowNodeAssertion
