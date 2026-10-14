@@ -136,6 +136,7 @@ export const getFlows = (
 ) => {
   const params = new URLSearchParams();
   if (query?.env) params.append('env', query.env);
+  if (query?.appConfigId) params.append('appConfigId', query.appConfigId);
   if (options?.pageNum) params.append('pageNum', String(options.pageNum));
   if (options?.pageSize) params.append('pageSize', String(options.pageSize || 10));
   if (options?.swaggerMappingId) params.append('swaggerMappingId', String(options.swaggerMappingId));

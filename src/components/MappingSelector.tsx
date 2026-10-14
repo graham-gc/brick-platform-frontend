@@ -8,7 +8,10 @@ interface MappingSelectorProps {
   mappings?: AppSwaggerMapping[];
   loading?: boolean;
   value?: number | null;
-  onChange: (mapping?: AppSwaggerMapping) => void;
+  onChange: (
+    mapping?: AppSwaggerMapping,
+    selection?: { appConfigId?: string; env?: string }
+  ) => void;
 }
 
 export function MappingSelector({ mappings, loading, value, onChange }: MappingSelectorProps) {
@@ -63,7 +66,7 @@ export function MappingSelector({ mappings, loading, value, onChange }: MappingS
           onChange={(appConfigId?: string) => {
             setSelectedAppConfigId(appConfigId);
             setSelectedEnvironment(undefined);
-            onChange(undefined);
+            onChange(undefined, { appConfigId });
           }}
         />
       </Space>
@@ -79,7 +82,7 @@ export function MappingSelector({ mappings, loading, value, onChange }: MappingS
           value={selectedEnvironment}
           onChange={(environment?: string) => {
             setSelectedEnvironment(environment);
-            onChange(undefined);
+            onChange(undefined, { appConfigId: selectedAppConfigId, env: environment });
           }}
         />
       </Space>
@@ -94,7 +97,10 @@ export function MappingSelector({ mappings, loading, value, onChange }: MappingS
           allowClear
           value={value ?? undefined}
           onChange={(mappingId?: number) => {
-            onChange((mappings || []).find((mapping) => mapping.id === mappingId));
+            onChange((mappings || []).find((mapping) => mapping.id === mappingId), {
+              appConfigId: selectedAppConfigId,
+              env: selectedEnvironment,
+            });
           }}
         />
       </Space>

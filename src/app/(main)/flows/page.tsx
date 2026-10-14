@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { App as AntdApp, Table, Button, Space, Modal, Form, Input, Select, Tag, Popconfirm, Card } from 'antd';
+import { App as AntdApp, Table, Button, Modal, Form, Input, Select, Tag, Popconfirm, Card } from 'antd';
 import { PlusOutlined, PlayCircleOutlined, DeleteOutlined, EditOutlined, CopyOutlined, PartitionOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
 import type { BrickFlow } from '@/types';
 import { RunResultDrawer } from '@/features/run-result/RunResultDrawer';
+import { MappingSelector } from '@/components/MappingSelector';
 
 export default function FlowsPage() {
   const { message } = AntdApp.useApp();
@@ -16,18 +17,25 @@ export default function FlowsPage() {
   const [form] = Form.useForm();
   const [editVisible, setEditVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<BrickFlow | null>(null);
-  const [swaggerMappingId, setSwaggerMappingId] = useState<number | undefined>();
+  const [filters, setFilters] = useState<{
+    appConfigId?: string;
+    env?: string;
+    swaggerMappingId?: number;
+  }>({});
   const [resultRunId, setResultRunId] = useState<number>();
   const [resultFlowId, setResultFlowId] = useState<number>();
   const [pageNum, setPageNum] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['flows', swaggerMappingId, pageNum, pageSize],
-    queryFn: () => api.getFlows({ env: 'dev' }, { swaggerMappingId, pageNum, pageSize }),
+    queryKey: ['flows', filters.appConfigId, filters.env, filters.swaggerMappingId, pageNum, pageSize],
+    queryFn: () => api.getFlows(
+      { appConfigId: filters.appConfigId, env: filters.env },
+      { swaggerMappingId: filters.swaggerMappingId, pageNum, pageSize }
+    ),
   });
 
-  const { data: mappings } = useQuery({
+  const { data: mappings, isLoading: mappingsLoading } = useQuery({
     queryKey: ['mappings'],
     queryFn: () => api.getMappings(),
   });
@@ -97,7 +105,7 @@ export default function FlowsPage() {
       <Link className="responsive-table-text" href={`/flows/${record.id}`}>{name}</Link>
     )},
     { title: 'Environment', dataIndex: 'env', key: 'env', responsive: ['sm'], render: (env) => <Tag color="blue">{env}</Tag> },
-    { title: 'Version', dataIndex: 'version', key: 'version', responsive: ['lg'] },
+    { title: 'Flow Version', dataIndex: 'version', key: 'version', responsive: ['lg'] },
     { title: 'Created At', dataIndex: 'createTime', key: 'createTime', responsive: ['xl'] },
     { title: 'Actions', key: 'action', render: (_, record) => (
       <div className="responsive-table-actions">
@@ -144,21 +152,21 @@ export default function FlowsPage() {
       </div>
 
       <Card style={{ marginBottom: 16 }}>
-        <Space wrap className="responsive-filter-bar">
-          <Select
-            placeholder="Select an application"
-            className="responsive-filter-control"
-            style={{ width: 300 }}
-            allowClear
-            onChange={(v) => setSwaggerMappingId(v)}
-          >
-            {mappings?.map((m) => (
-              <Select.Option key={m.id} value={m.id!}>
-                {m.appName} - {m.env} - {m.versionTag}
-              </Select.Option>
-            ))}
-          </Select>
-        </Space>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, alignItems: 'end' }}>
+          <MappingSelector
+            mappings={mappings}
+            loading={mappingsLoading}
+            value={filters.swaggerMappingId}
+            onChange={(mapping, selection) => {
+              setFilters({
+                appConfigId: selection?.appConfigId,
+                env: selection?.env,
+                swaggerMappingId: mapping?.id,
+              });
+              setPageNum(1);
+            }}
+          />
+        </div>
       </Card>
 
       <Table

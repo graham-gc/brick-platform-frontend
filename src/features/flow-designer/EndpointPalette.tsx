@@ -81,9 +81,16 @@ export function EndpointPalette({ endpoints, onQuickAdd }: EndpointPaletteProps)
                 <Tag color={METHOD_COLORS[endpoint.httpMethod || ''] || 'default'}>
                   {endpoint.httpMethod || 'HTTP'}
                 </Tag>
-                <span>{endpoint.summary || endpoint.operationId || 'Unnamed endpoint'}</span>
+                <span className={styles.endpointPath} title={endpoint.endpointPath}>
+                  {endpoint.endpointPath}
+                </span>
               </div>
-              <div className={styles.endpointPath}>{endpoint.endpointPath}</div>
+              <div
+                className={styles.endpointSummary}
+                title={endpoint.summary || endpoint.operationId || 'Unnamed endpoint'}
+              >
+                {endpoint.summary || endpoint.operationId || 'Unnamed endpoint'}
+              </div>
             </div>
             <Button
               className="nodrag"
