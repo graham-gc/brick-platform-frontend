@@ -11,43 +11,115 @@
   margin-bottom: 14px;
 }
 
+.metricTitle {
+  margin-bottom: 8px;
+  color: #8c8c8c;
+  font-size: 14px;
+}
+
+.metricAssertion :global(.ant-tag) {
+  margin-inline-end: 0;
+  padding: 3px 8px;
+  font-size: 17px;
+  line-height: 24px;
+}
+
 .runAlert {
   margin-bottom: 14px;
 }
 
 .resultGrid {
   display: grid;
-  grid-template-columns: minmax(390px, 0.85fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.2fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
+  min-height: max(420px, calc(100dvh - 290px));
 }
 
 .nodeListCard,
 .nodeDetailCard {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
-.selectedRow :global(.ant-table-cell) {
-  background: #e6f4ff !important;
+.nodeListCard :global(.ant-card-body),
+.nodeDetailCard :global(.ant-card-body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.requestCell {
+.nodeList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nodeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nodeItem:hover,
+.nodeItem:focus-visible {
+  border-color: #91caff;
+  background: #f5faff;
+}
+
+.nodeItem:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.selectedNodeItem {
+  border-color: #91caff;
+  background: #e6f4ff;
+}
+
+.nodeItemHeading,
+.nodeStatuses {
   display: flex;
   align-items: center;
-  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.requestCell :global(.ant-typography) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.nodeItem :global(.ant-tag) {
+  margin-inline-end: 0;
+}
+
+.nodeStep {
+  font-weight: 600;
+}
+
+.nodeDuration {
+  margin-left: auto;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.nodePath {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .requestUrl {
   overflow-wrap: anywhere;
 }
 
+.overviewPayloads,
 .codeGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -95,6 +167,11 @@
 
   .resultGrid {
     grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .nodeListCard {
+    max-height: 360px;
   }
 }
 

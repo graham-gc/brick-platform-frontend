@@ -30,7 +30,7 @@ import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
 import { conciseFlowError } from '@/features/run-result/error-summary';
-import { BUSINESS_STATUS_COLORS, businessStatusLabel } from '@/features/run-result/status';
+import { assertionStatus } from '@/features/run-result/status';
 import type { BrickFlowRunNode } from '@/types';
 import styles from './run-detail.module.css';
 
@@ -47,6 +47,11 @@ function statusIcon(status?: string) {
   if (status === 'success') return <CheckCircleOutlined />;
   if (status === 'failed') return <CloseCircleOutlined />;
   return undefined;
+}
+
+function AssertionTag({ total, passed }: { total?: number; passed?: number }) {
+  const { label, color } = assertionStatus(total, passed);
+  return <Tag color={color}>{label}</Tag>;
 }
 
 function formatPayload(value?: string) {
@@ -107,6 +112,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const selectedNodeIndex = selectedNode ? nodes.findIndex((node) => nodeRowKey(node) === nodeRowKey(selectedNode)) : -1;
   const successCount = nodes.filter((node) => node.status === 'success').length;
   const failedCount = nodes.filter((node) => node.status === 'failed' || node.status === 'blocked').length;
+  const assertionTotalCount = nodes.reduce((total, node) => total + (node.assertionTotalCount ?? 0), 0);
+  const assertionPassedCount = nodes.reduce((total, node) => total + (node.assertionPassedCount ?? 0), 0);
   const assertionFailureCount = nodes.reduce(
     (total, node) => total + (node.assertionFailedCount ?? 0), 0
   );
@@ -148,13 +155,10 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       ),
     },
     {
-      title: 'Business Result',
-      dataIndex: 'businessStatus',
-      key: 'businessStatus',
-      render: (businessStatus) => (
-        <Tag color={BUSINESS_STATUS_COLORS[businessStatus || 'not_evaluated']}>
-          {businessStatusLabel(businessStatus)}
-        </Tag>
+      title: 'Assertions',
+      key: 'assertions',
+      render: (_value, node) => (
+        <AssertionTag total={node.assertionTotalCount} passed={node.assertionPassedCount} />
       ),
     },
     {
@@ -186,10 +190,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             <Descriptions.Item label="Request Status">
               <Tag color={STATUS_COLORS[selectedNode.status || '']} icon={statusIcon(selectedNode.status)}>{selectedNode.status || '-'}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="Business Result">
-              <Tag color={BUSINESS_STATUS_COLORS[selectedNode.businessStatus || 'not_evaluated']}>
-                {businessStatusLabel(selectedNode.businessStatus)}
-              </Tag>
+            <Descriptions.Item label="Assertions">
+              <AssertionTag total={selectedNode.assertionTotalCount} passed={selectedNode.assertionPassedCount} />
             </Descriptions.Item>
             <Descriptions.Item label="HTTP Method">{selectedNode.requestMethod || '-'}</Descriptions.Item>
             <Descriptions.Item label="HTTP Status">{selectedNode.httpStatus ?? '-'}</Descriptions.Item>
@@ -265,7 +267,12 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
       <div className={styles.metricGrid}>
         <Card><Statistic title="Request Execution" value={run.status || '-'} prefix={statusIcon(run.status)} /></Card>
-        <Card><Statistic title="Business Result" value={businessStatusLabel(run.businessStatus)} /></Card>
+        <Card>
+          <div className={styles.metricTitle}>Assertions</div>
+          <div className={styles.metricAssertion}>
+            <AssertionTag total={assertionTotalCount} passed={assertionPassedCount} />
+          </div>
+        </Card>
         <Card><Statistic title="Duration" value={run.durationMs ?? 0} suffix="ms" /></Card>
         <Card><Statistic title="Successful Requests" value={successCount} suffix={`/ ${nodes.length}`} /></Card>
         <Card><Statistic title="Request Failed / Blocked" value={failedCount} /></Card>
@@ -294,10 +301,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           <Descriptions.Item label="Request Status">
             <Tag color={STATUS_COLORS[run.status || '']} icon={statusIcon(run.status)}>{run.status || '-'}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="Business Result">
-            <Tag color={BUSINESS_STATUS_COLORS[run.businessStatus || 'not_evaluated']}>
-              {businessStatusLabel(run.businessStatus)}
-            </Tag>
+          <Descriptions.Item label="Assertions">
+            <AssertionTag total={assertionTotalCount} passed={assertionPassedCount} />
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -326,9 +331,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           extra={(
             <Space wrap>
               <Tag color={STATUS_COLORS[selectedNode.status || '']}>Request: {selectedNode.status || '-'}</Tag>
-              <Tag color={BUSINESS_STATUS_COLORS[selectedNode.businessStatus || 'not_evaluated']}>
-                Business: {businessStatusLabel(selectedNode.businessStatus)}
-              </Tag>
+              <AssertionTag total={selectedNode.assertionTotalCount} passed={selectedNode.assertionPassedCount} />
             </Space>
           )}
         >

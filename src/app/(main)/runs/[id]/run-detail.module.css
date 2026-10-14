@@ -21,6 +21,19 @@
   margin-bottom: 16px;
 }
 
+.metricTitle {
+  margin-bottom: 8px;
+  color: #8c8c8c;
+  font-size: 14px;
+}
+
+.metricAssertion :global(.ant-tag) {
+  margin-inline-end: 0;
+  padding: 3px 8px;
+  font-size: 17px;
+  line-height: 24px;
+}
+
 .summaryCard,
 .nodesCard,
 .detailCard {

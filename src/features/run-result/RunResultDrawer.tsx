@@ -13,7 +13,6 @@ import {
   Space,
   Spin,
   Statistic,
-  Table,
   Tabs,
   Tag,
   Typography,
@@ -24,12 +23,11 @@ import {
   LoadingOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
 import Link from 'next/link';
 import * as api from '@/services/api';
 import type { BrickFlowRunNode, BrickFlowRunNodeAssertion } from '@/types';
 import { conciseFlowError } from './error-summary';
-import { BUSINESS_STATUS_COLORS, businessStatusLabel } from './status';
+import { assertionStatus } from './status';
 import styles from './run-result-drawer.module.css';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -110,8 +108,23 @@ function statusIcon(status?: string) {
   return undefined;
 }
 
+function AssertionTag({ total, passed }: { total?: number; passed?: number }) {
+  const { label, color } = assertionStatus(total, passed);
+  return <Tag color={color}>{label}</Tag>;
+}
+
 function nodeRowKey(node: BrickFlowRunNode) {
   return node.id ?? `node-${node.nodeId ?? 'unknown'}`;
+}
+
+function requestPath(url?: string) {
+  if (!url) return 'No request URL';
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
 }
 
 function formatPayload(value?: string) {
@@ -159,6 +172,8 @@ export function RunResultDrawer({
     : -1;
   const successfulNodes = nodes.filter((node) => node.status === 'success').length;
   const failedNodes = nodes.filter((node) => node.status === 'failed' || node.status === 'blocked').length;
+  const assertionTotal = nodes.reduce((sum, node) => sum + (node.assertionTotalCount ?? 0), 0);
+  const assertionPassed = nodes.reduce((sum, node) => sum + (node.assertionPassedCount ?? 0), 0);
   const assertionFailures = nodes.reduce((sum, node) => sum + (node.assertionFailedCount ?? 0), 0);
 
   // Find all nodes with assertion failures in order
@@ -175,53 +190,6 @@ export function RunResultDrawer({
     setSelection({ runId, nodeKey: nodeRowKey(failureNodes[nextIdx].node) });
     setActiveDetailTab('assertions');
   };
-
-  const columns: ColumnsType<BrickFlowRunNode> = [
-    {
-      title: 'Step',
-      key: 'step',
-      width: 64,
-      render: (_value, _node, index) => index + 1,
-    },
-    {
-      title: 'Request',
-      key: 'request',
-      ellipsis: true,
-      render: (_value, node) => (
-        <div className={styles.requestCell}>
-          <Tag color="blue">{node.requestMethod || '-'}</Tag>
-          <Typography.Text title={node.requestUrl}>{node.requestUrl || `Node ${node.nodeId ?? '-'}`}</Typography.Text>
-        </div>
-      ),
-    },
-    {
-      title: 'Request',
-      dataIndex: 'status',
-      key: 'status',
-      width: 104,
-      render: (status) => (
-        <Tag color={STATUS_COLORS[status || '']} icon={statusIcon(status)}>{status || '-'}</Tag>
-      ),
-    },
-    {
-      title: 'Business',
-      dataIndex: 'businessStatus',
-      key: 'businessStatus',
-      width: 120,
-      render: (businessStatus) => (
-        <Tag color={BUSINESS_STATUS_COLORS[businessStatus || 'not_evaluated']}>
-          {businessStatusLabel(businessStatus)}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Duration',
-      dataIndex: 'durationMs',
-      key: 'durationMs',
-      width: 96,
-      render: (duration) => duration == null ? '-' : `${duration} ms`,
-    },
-  ];
 
   const nodeTabs = selectedNode ? [
     {
@@ -243,10 +211,8 @@ export function RunResultDrawer({
             <Descriptions.Item label="Request Status">
               <Tag color={STATUS_COLORS[selectedNode.status || '']}>{selectedNode.status || '-'}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="Business Result">
-              <Tag color={BUSINESS_STATUS_COLORS[selectedNode.businessStatus || 'not_evaluated']}>
-                {businessStatusLabel(selectedNode.businessStatus)}
-              </Tag>
+            <Descriptions.Item label="Assertions">
+              <AssertionTag total={selectedNode.assertionTotalCount} passed={selectedNode.assertionPassedCount} />
             </Descriptions.Item>
             <Descriptions.Item label="HTTP Status">{selectedNode.httpStatus ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="Duration">
@@ -261,6 +227,12 @@ export function RunResultDrawer({
               </Typography.Text>
             </Descriptions.Item>
           </Descriptions>
+          {(selectedNode.requestBody || selectedNode.fullResponse) && (
+            <div className={styles.overviewPayloads}>
+              {selectedNode.requestBody && <CodePanel title="Request body" value={selectedNode.requestBody} />}
+              {selectedNode.fullResponse && <CodePanel title="Response body" value={selectedNode.fullResponse} />}
+            </div>
+          )}
         </Space>
       ),
     },
@@ -311,9 +283,7 @@ export function RunResultDrawer({
           <Tag color={STATUS_COLORS[run.status || '']} icon={statusIcon(run.status)}>
             Request: {run.status || '-'}
           </Tag>
-          <Tag color={BUSINESS_STATUS_COLORS[run.businessStatus || 'not_evaluated']}>
-            Business: {businessStatusLabel(run.businessStatus)}
-          </Tag>
+          <AssertionTag total={assertionTotal} passed={assertionPassed} />
         </Space>
       ) : 'Run Result'}
       destroyOnHidden
@@ -344,7 +314,12 @@ export function RunResultDrawer({
         <>
           <div className={styles.metricGrid}>
             <Card size="small"><Statistic title="Duration" value={run.durationMs ?? 0} suffix="ms" /></Card>
-            <Card size="small"><Statistic title="Business Result" value={businessStatusLabel(run.businessStatus)} /></Card>
+            <Card size="small">
+              <div className={styles.metricTitle}>Assertions</div>
+              <div className={styles.metricAssertion}>
+                <AssertionTag total={assertionTotal} passed={assertionPassed} />
+              </div>
+            </Card>
             <Card size="small"><Statistic title="Successful Requests" value={successfulNodes} suffix={`/ ${nodes.length}`} /></Card>
             <Card size="small"><Statistic title="Request Failed / Blocked" value={failedNodes} /></Card>
             <Card
@@ -379,22 +354,36 @@ export function RunResultDrawer({
           )}
           <div className={styles.resultGrid}>
             <Card title={`Node Executions (${nodes.length})`} size="small" className={styles.nodeListCard}>
-              <Table
-                columns={columns}
-                dataSource={nodes}
-                rowKey={nodeRowKey}
-                pagination={false}
-                size="small"
-                tableLayout="auto"
-                scroll={{ y: 'calc(100vh - 370px)' }}
-                locale={{ emptyText: 'No node execution records were created.' }}
-                rowClassName={(node) => selectedNode && nodeRowKey(node) === nodeRowKey(selectedNode)
-                  ? styles.selectedRow : ''}
-                onRow={(node) => ({
-                  onClick: () => setSelection({ runId, nodeKey: nodeRowKey(node) }),
-                  style: { cursor: 'pointer' },
-                })}
-              />
+              {nodes.length > 0 ? (
+                <div className={styles.nodeList}>
+                  {nodes.map((node, index) => (
+                    <button
+                      key={nodeRowKey(node)}
+                      type="button"
+                      className={`${styles.nodeItem} ${selectedNode && nodeRowKey(node) === nodeRowKey(selectedNode) ? styles.selectedNodeItem : ''}`}
+                      aria-pressed={selectedNode && nodeRowKey(node) === nodeRowKey(selectedNode)}
+                      onClick={() => setSelection({ runId, nodeKey: nodeRowKey(node) })}
+                    >
+                      <span className={styles.nodeItemHeading}>
+                        <span className={styles.nodeStep}>Step {index + 1}</span>
+                        <Tag color="blue">{node.requestMethod || '-'}</Tag>
+                        <span className={styles.nodeDuration}>
+                          {node.durationMs == null ? '-' : `${node.durationMs} ms`}
+                        </span>
+                      </span>
+                      <span className={styles.nodePath} title={node.requestUrl}>
+                        {requestPath(node.requestUrl)}
+                      </span>
+                      <span className={styles.nodeStatuses}>
+                        <Tag color={STATUS_COLORS[node.status || '']} icon={statusIcon(node.status)}>
+                          {node.status || '-'}
+                        </Tag>
+                        <AssertionTag total={node.assertionTotalCount} passed={node.assertionPassedCount} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : <Empty description="No node execution records were created." />}
             </Card>
             <Card
               title={selectedNode ? `Step ${selectedNodeIndex + 1} Details` : 'Node Details'}
@@ -403,9 +392,7 @@ export function RunResultDrawer({
               extra={selectedNode && (
                 <Space wrap>
                   <Tag color={STATUS_COLORS[selectedNode.status || '']}>Request: {selectedNode.status || '-'}</Tag>
-                  <Tag color={BUSINESS_STATUS_COLORS[selectedNode.businessStatus || 'not_evaluated']}>
-                    Business: {businessStatusLabel(selectedNode.businessStatus)}
-                  </Tag>
+                  <AssertionTag total={selectedNode.assertionTotalCount} passed={selectedNode.assertionPassedCount} />
                 </Space>
               )}
             >
