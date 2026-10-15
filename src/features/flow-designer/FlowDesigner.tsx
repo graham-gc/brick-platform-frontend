@@ -41,6 +41,7 @@ import {
   type AvailableFlowVariable,
 } from './context-variables';
 import { createInitialNodeRequest } from './request-definition';
+import { flowStepLabels } from './flow-step-labels';
 import type { FlowCanvasEdge, FlowCanvasSavePayload, HttpCanvasNode } from './model';
 import styles from './flow-designer.module.css';
 
@@ -188,6 +189,13 @@ function FlowDesignerCanvas({
 
   const [nodes, setNodes] = useState<HttpCanvasNode[]>(initialNodes);
   const [edges, setEdges] = useState<FlowCanvasEdge[]>(initialEdges);
+  const canvasNodes = useMemo(() => {
+    const stepLabels = flowStepLabels(nodes.map((node) => node.id), edges);
+    return nodes.map((node) => ({
+      ...node,
+      data: { ...node.data, stepLabel: stepLabels.get(node.id) },
+    }));
+  }, [nodes, edges]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -491,9 +499,7 @@ function FlowDesignerCanvas({
           <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>Back</Button>
           <div className={styles.flowTitleBlock}>
             {titleContent || <h2>{flow.name}</h2>}
-            <Space size={6} wrap>
-              {hasUnsavedChanges && <Tag color="orange">Unsaved changes</Tag>}
-            </Space>
+            {hasUnsavedChanges && <Tag color="orange">Unsaved changes</Tag>}
           </div>
         </div>
         <Space wrap>
@@ -535,7 +541,7 @@ function FlowDesignerCanvas({
         <EndpointPalette endpoints={endpoints} onQuickAdd={handleQuickAdd} />
         <div className={styles.canvasPanel} ref={canvasRef}>
           <ReactFlow<HttpCanvasNode, FlowCanvasEdge>
-            nodes={nodes}
+            nodes={canvasNodes}
             edges={edges}
             nodeTypes={nodeTypes}
             onNodesChange={handleNodesChange}

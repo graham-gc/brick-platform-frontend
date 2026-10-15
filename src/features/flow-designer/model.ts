@@ -6,6 +6,7 @@ export interface HttpNodeData extends Record<string, unknown> {
   method: string;
   path: string;
   label: string;
+  stepLabel?: string;
   endpoint?: EndpointDefinition;
   flowNode: BrickFlowNode;
 }
