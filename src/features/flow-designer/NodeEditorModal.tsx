@@ -261,7 +261,14 @@ export function NodeEditorModal({
       )}
       onCancel={onCancel}
       onOk={() => {
-        void form.validateFields().then((values) => {
+        void form.validateFields().then((validatedValues) => {
+          // Tabs mount on demand, so validateFields() omits fields on tabs that were never opened.
+          // Include the complete form store to avoid clearing existing request parameters.
+          const values: NodeEditorValues = {
+            ...initialValues,
+            ...form.getFieldsValue(true),
+            ...validatedValues,
+          };
           const assertionsPayload = (values.assertions || []).map(
             (item: AssertionFormItem) => ({
               id: item.id,
