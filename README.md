@@ -6,6 +6,12 @@ Brick Platform is a visual API workflow automation application. It converts impo
 
 This repository contains the Next.js application. The execution service, database schema, mock API, and complete Docker Compose setup are in [brick-platform-backend](https://github.com/graham-gc/brick-platform-backend).
 
+## Documentation
+
+- [Development guide](docs/development.md): service addresses, frontend architecture, save/run behaviour, manual checks, and troubleshooting.
+- [Backend development guide](https://github.com/graham-gc/brick-platform-backend/blob/main/docs/development.md): database setup, execution semantics, and backend configuration.
+- [Flow save contract](https://github.com/graham-gc/brick-platform-backend/blob/main/docs/flow-save-frontend-contract.md): node identity, full-canvas updates, assertions, and save responses.
+
 ## Project background
 
 This is the user-interface reconstruction of an internal engineering-productivity platform that I independently designed and delivered. The original platform supported approximately 30 applications, 4,000 API definitions, and more than 800 test flows. The public implementation uses newly written code and synthetic data; it contains no former-employer source code, production data, infrastructure details, or proprietary identifiers.
@@ -77,7 +83,7 @@ The implementation reflects a full delivery lifecycle rather than a UI exercise:
 - Reuse the same endpoint multiple times as independent flow nodes
 - Connect nodes through four bidirectional handles and build branching graphs
 - Configure `ALL` or `ANY` join behaviour for nodes with multiple incoming dependencies
-- Edit flow names inline and keep unsaved nodes distinct with temporary negative IDs
+- Name a new flow inline and keep unsaved nodes distinct with temporary negative IDs
 
 ### Pass data through a workflow
 
@@ -153,11 +159,17 @@ docker compose up --build
 
 Open [http://localhost:3000](http://localhost:3000).
 
+Compose uses the public frontend `main` branch by default. To build your local frontend changes, run the following **from the backend directory**, replacing the path with your frontend checkout:
+
+```bash
+FRONTEND_BUILD_CONTEXT=/absolute/path/to/brick-platform-frontend docker compose up --build
+```
+
 ## Local development
 
 ### Prerequisites
 
-- Node.js 20.9 or later
+- Node.js 22, matching CI and the Docker image (Next.js requires at least 20.9)
 - npm
 - A running [Brick Platform backend](https://github.com/graham-gc/brick-platform-backend)
 
@@ -165,10 +177,17 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```bash
 npm ci
-API_BASE_URL=http://localhost:8080/api/brick npm run dev
+cp .env.example .env.local
+npm run dev
 ```
 
-`API_BASE_URL` is used only by the server-side proxy and is not exposed to the browser. It defaults to `http://localhost:8080/api/brick`.
+Copy the environment file on first setup; retain an existing `.env.local` if you have already configured it. Open [http://localhost:3000](http://localhost:3000).
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `API_BASE_URL` | `http://localhost:8080/api/brick` | Backend URL as reached by the Next.js server; include `/api/brick`. |
+
+`API_BASE_URL` is server-side configuration and does not need a `NEXT_PUBLIC_` prefix. Restart the development server after changing it. If your backend runs in Docker while Next.js runs on the host, use the backend's published host port, normally `8080`. See the [address table](docs/development.md#service-addresses) for other arrangements.
 
 ### Production container
 
@@ -184,7 +203,7 @@ docker run --rm \
 
 ## Product walkthrough
 
-1. Open **Swagger Mappings** and import `http://localhost:9090/openapi.json`.
+1. Open **Swagger Mappings** and import `http://localhost:9090/openapi.json`. Creating the mapping also imports its endpoints.
 2. Open **Endpoint Definitions** and inspect the generated request and response models.
 3. Create a flow from **Test Flows**.
 4. Compose `Login -> List Products -> Create Order -> Pay Order -> Get Order`.
@@ -195,6 +214,8 @@ docker run --rm \
 
 The bundled mock login accepts `demo.user` / `demo-password`. Protected endpoints expect `Authorization: Bearer mock-access-token`.
 
+Swagger URLs are fetched by the Spring Boot backend. In Compose, `localhost:9090` refers to the backend container's built-in mock. The mock listens on loopback, so opening the published `9090` port directly from the host is not a valid Docker smoke check; import it through Brick instead.
+
 ## Main routes
 
 | Route | Purpose |
@@ -202,18 +223,22 @@ The bundled mock login accepts `demo.user` / `demo-password`. Protected endpoint
 | `/mappings` | Swagger/OpenAPI source management and synchronisation |
 | `/endpoints` | Endpoint and recursively resolved schema inspection |
 | `/flows` | Flow management, visual composition, and execution |
+| `/flows/new` | Create a flow and its initial canvas |
+| `/flows/[id]` | Edit and execute a saved flow |
 | `/test-suites` | Ordered multi-flow execution and reports |
 | `/global-variables` | Static values, JavaScript functions, and database-query variables |
 | `/runs` | Historical runs and node-level diagnostics |
+| `/runs/[id]` | Persisted flow-run details |
 
 ## Quality checks
 
 ```bash
 npm run lint
+npx tsc --noEmit --incremental false
 npm run build
 ```
 
-GitHub Actions runs both checks and builds the production container image for pushes to `main` and pull requests.
+GitHub Actions runs lint, the production build, and a container build for pushes to `main` and pull requests. The standalone type check above is useful during development. This repository currently has no frontend unit-test or browser-test runner; use the [manual smoke checklist](docs/development.md#manual-smoke-checklist) to check interactions.
 
 ## Repository layout
 
@@ -225,6 +250,7 @@ src/features/run-result/    immediate and historical execution diagnostics
 src/services/               typed backend API client
 src/stores/                 shared client state
 src/types/                  API and domain models
+docs/                       development and integration guide
 ```
 
 ## Scope
