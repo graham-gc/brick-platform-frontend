@@ -331,6 +331,20 @@ export interface SyncResult {
   versionTag?: string;
 }
 
+export interface SwaggerSyncImpact {
+  flowId: number;
+  flowName: string | null;
+  nodeId: number;
+  httpMethod: string;
+  endpointPath: string;
+  statusCode: string;
+  contentType: string | null;
+  fieldPath: string;
+  referenceType: 'RESPONSE_VARIABLE' | 'ASSERTION';
+  variableName: string | null;
+  assertionId: number | null;
+}
+
 // FlowUpsertReq
 export interface FlowUpsertReq {
   flow: BrickFlow;

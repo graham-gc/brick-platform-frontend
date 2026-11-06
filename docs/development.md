@@ -51,6 +51,14 @@ Paths below are relative to this repository.
 | Reports | `src/features/run-result/`, `src/app/(main)/runs/` | Immediate result drawer and persisted run diagnostics |
 | API contract | `src/services/api.ts`, `src/types/index.ts` | Endpoint calls and TypeScript domain models |
 
+## Preview a contract update
+
+In **Swagger Mappings**, choose **Sync**, validate the updated URL or JSON file, and select **Preview Impact**. The preview compares the saved response schema to the incoming schema and lists saved flow nodes whose response variables or enabled JSONPath assertions refer to fields that are no longer declared.
+
+Open an affected node in a new tab to review its **Response Variables** or **Assertions**. The preview leaves the existing mapping unchanged. Select **Sync Endpoints** to apply the document you reviewed, or go back to change the input.
+
+The check covers simple dot paths and array indices or wildcards in comparable responses. A clean preview does not cover arbitrary JSONPath expressions, type changes, or removed operations or response statuses.
+
 ## Canvas save and execution
 
 `endpointId` identifies the reusable API definition. A canvas node has its own `id`, so the same endpoint can be added repeatedly with different inputs and assertions. New nodes and edges use negative temporary IDs.

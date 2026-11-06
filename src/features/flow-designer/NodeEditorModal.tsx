@@ -69,7 +69,10 @@ interface AssertionFormItem {
   isEnabled: boolean;
 }
 
+export type NodeEditorTab = 'responseVariables' | 'assertions';
+
 interface NodeEditorModalProps {
+  initialTab?: NodeEditorTab;
   node: HttpCanvasNode;
   availableVariables: AvailableFlowVariable[];
   reservedVariableNames: string[];
@@ -113,6 +116,7 @@ function ParameterSummary({ parameters }: { parameters?: EndpointParameterDefini
 
 export function NodeEditorModal({
   node,
+  initialTab,
   availableVariables,
   reservedVariableNames,
   inheritedHeadersJson,
@@ -299,7 +303,7 @@ export function NodeEditorModal({
     >
       <Form form={form} layout="vertical" initialValues={initialValues}>
         <Tabs
-          defaultActiveKey={missingVariableNames.length ? 'variableBindings' : undefined}
+          defaultActiveKey={initialTab ?? (missingVariableNames.length ? 'variableBindings' : undefined)}
           items={[
             {
               key: 'body',

@@ -76,6 +76,7 @@ The implementation reflects a full delivery lifecycle rather than a UI exercise:
 - Validate and import Swagger 2.0 or OpenAPI 3 from a URL or local JSON file
 - Browse endpoints by application, environment, version, method, and path
 - Inspect request bodies, query parameters, path parameters, responses, and recursively resolved schemas
+- Preview which saved flow variables and assertions reference response fields removed by an OpenAPI update
 
 ### Compose executable flows
 

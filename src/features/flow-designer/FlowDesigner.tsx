@@ -32,7 +32,7 @@ import {
 import type { BrickFlow, BrickFlowEdge, BrickFlowNode, EndpointDefinition } from '@/types';
 import { EndpointPalette } from './EndpointPalette';
 import { HttpFlowNode } from './HttpFlowNode';
-import { NodeEditorModal } from './NodeEditorModal';
+import { NodeEditorModal, type NodeEditorTab } from './NodeEditorModal';
 import { FlowHeadersModal } from './FlowHeadersModal';
 import { parseHeaderEntries } from './headers';
 import {
@@ -56,6 +56,7 @@ interface FlowDesignerProps {
   running: boolean;
   titleContent?: ReactNode;
   headerContent?: ReactNode;
+  initialEditor?: { nodeId: string; tab?: NodeEditorTab };
   onBack: () => void;
   onRun?: () => void;
   onSave: (payload: FlowCanvasSavePayload) => Promise<void>;
@@ -134,6 +135,7 @@ function FlowDesignerCanvas({
   running,
   titleContent,
   headerContent,
+  initialEditor,
   onBack,
   onRun,
   onSave,
@@ -145,7 +147,12 @@ function FlowDesignerCanvas({
   const reconnectingEdgeId = useRef<string | undefined>(undefined);
   const viewportInteraction = useRef(false);
   const [dirty, setDirty] = useState(false);
-  const [editingNodeId, setEditingNodeId] = useState<string>();
+  const [editor, setEditor] = useState(() => (
+    initialEditor && persistedNodes.some((node) => String(node.id) === initialEditor.nodeId)
+      ? initialEditor
+      : undefined
+  ));
+  const editingNodeId = editor?.nodeId;
   const [flowHeadersOpen, setFlowHeadersOpen] = useState(false);
   const [sharedHeadersJson, setSharedHeadersJson] = useState(flow.sharedHeadersJson || '{}');
   const hasUnsavedChanges = flow.id == null || dirty;
@@ -338,7 +345,7 @@ function FlowDesignerCanvas({
   }, []);
 
   const handleNodeDoubleClick: NodeMouseHandler<HttpCanvasNode> = useCallback((_event, node) => {
-    setEditingNodeId(node.id);
+    setEditor({ nodeId: node.id });
   }, []);
 
   const applyNodeEditorSave = (
@@ -373,7 +380,7 @@ function FlowDesignerCanvas({
         },
       };
     }));
-    setEditingNodeId(undefined);
+    setEditor(undefined);
     setDirty(true);
   };
 
@@ -445,7 +452,7 @@ function FlowDesignerCanvas({
       message.error(
         `Node ${danglingBinding.node.id} references missing flow variable “${danglingBinding.binding.variableName}”`
       );
-      setEditingNodeId(danglingBinding.node.id);
+      setEditor({ nodeId: danglingBinding.node.id });
       return;
     }
 
@@ -604,12 +611,13 @@ function FlowDesignerCanvas({
           <NodeEditorModal
             key={editingNode.id}
             node={editingNode}
+            initialTab={editor?.tab}
             availableVariables={variablesForNode(editingNode.id, nodes, edges)}
             reservedVariableNames={nodes
               .filter((node) => node.id !== editingNode.id)
               .flatMap((node) => parseResponseVariables(node.data.flowNode).map((variable) => variable.name))}
             inheritedHeadersJson={sharedHeadersJson}
-            onCancel={() => setEditingNodeId(undefined)}
+            onCancel={() => setEditor(undefined)}
             onSave={handleNodeEditorSave}
           />
         ) : null;

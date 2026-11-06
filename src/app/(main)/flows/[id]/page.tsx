@@ -9,9 +9,13 @@ import { FlowDesigner } from '@/features/flow-designer/FlowDesigner';
 import { RunResultDrawer } from '@/features/run-result/RunResultDrawer';
 import type { FlowCanvasSavePayload } from '@/features/flow-designer/model';
 
-export default function FlowDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function FlowDetailPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ nodeId?: string | string[]; tab?: string | string[] }>;
+}) {
   const { message } = AntdApp.useApp();
   const { id } = use(params);
+  const { nodeId, tab } = use(searchParams);
   const router = useRouter();
   const queryClient = useQueryClient();
   const flowId = Number(id);
@@ -117,6 +121,10 @@ export default function FlowDetailPage({ params }: { params: Promise<{ id: strin
         persistedNodes={flowDetail.nodes || []}
         persistedEdges={flowDetail.edges || []}
         endpoints={endpoints || []}
+        initialEditor={designerRevision === 0 && typeof nodeId === 'string' ? {
+          nodeId,
+          tab: tab === 'assertions' || tab === 'responseVariables' ? tab : undefined,
+        } : undefined}
         saving={saveMutation.isPending}
         running={runMutation.isPending}
         onBack={() => router.back()}

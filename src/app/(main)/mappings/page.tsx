@@ -6,7 +6,8 @@ import { App as AntdApp, Table, Button, Space, Modal, Form, Input, Select, Tag, 
 import { PlusOutlined, SyncOutlined, DeleteOutlined, EditOutlined, UploadOutlined, InboxOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import * as api from '@/services/api';
-import type { AppSwaggerMapping, ValidateParseRequest } from '@/types';
+import { SyncImpactPreview } from '@/features/swagger-sync/SyncImpactPreview';
+import type { AppSwaggerMapping, SwaggerSyncImpact, SyncRequest, ValidateParseRequest } from '@/types';
 
 const ENV_OPTIONS = [
   { label: 'Development', value: 'dev' },
@@ -23,6 +24,7 @@ const VERSION_OPTIONS = [
 
 const MAX_SWAGGER_FILE_SIZE = 5 * 1024 * 1024;
 type SwaggerSourceMode = 'url' | 'file';
+type SyncPreview = { request: SyncRequest; impacts: SwaggerSyncImpact[] };
 
 export default function MappingsPage() {
   const { message } = AntdApp.useApp();
@@ -41,6 +43,7 @@ export default function MappingsPage() {
   const [swaggerFileName, setSwaggerFileName] = useState('');
   const [swaggerType, setSwaggerType] = useState('');
   const [sourceMode, setSourceMode] = useState<SwaggerSourceMode>('url');
+  const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
   const validationRequestId = useRef(0);
 
   const { data, isLoading } = useQuery({
@@ -157,8 +160,18 @@ export default function MappingsPage() {
     },
   });
 
+  const previewMutation = useMutation({
+    mutationFn: ({ request }: { request: SyncRequest; requestId: number }) => api.previewSwaggerSync(request),
+    onSuccess: (impacts, { request, requestId }) => {
+      if (requestId === validationRequestId.current) setSyncPreview({ request, impacts });
+    },
+    onError: (err: Error, { requestId }) => {
+      if (requestId === validationRequestId.current) message.error(err.message);
+    },
+  });
+
   const syncMutation = useMutation({
-    mutationFn: async (request: Parameters<typeof api.syncEndpoints>[0]) => {
+    mutationFn: async (request: SyncRequest) => {
       if (editingRecord && request.swaggerUrl && request.swaggerUrl !== editingRecord.swaggerUrl) {
         await api.updateMapping({
           ...editingRecord,
@@ -307,6 +320,7 @@ export default function MappingsPage() {
 
   const handleSync = (record: AppSwaggerMapping) => {
     validationRequestId.current += 1;
+    setSyncPreview(null);
     setEditingRecord(record);
     syncForm.resetFields();
     setSwaggerContent('');
@@ -335,6 +349,7 @@ export default function MappingsPage() {
 
   const closeSyncModal = () => {
     validationRequestId.current += 1;
+    setSyncPreview(null);
     setSyncVisible(false);
     syncForm.resetFields();
     setSwaggerContent('');
@@ -380,15 +395,17 @@ export default function MappingsPage() {
     return false;
   };
 
-  const handleSyncSubmit = async () => {
+  const handlePreviewSubmit = async () => {
     if (!swaggerContent) {
       message.error('Validate the Swagger document before syncing');
       return;
     }
 
+    const requestId = validationRequestId.current;
     try {
       const values = await syncForm.validateFields();
-      syncMutation.mutate({
+      if (requestId !== validationRequestId.current) return;
+      const request: SyncRequest = {
         swaggerMappingId: editingRecord?.id,
         env: values.env,
         appConfigId: editingRecord?.appConfigId,
@@ -398,7 +415,8 @@ export default function MappingsPage() {
           : editingRecord?.swaggerUrl,
         swaggerContent,
         operator: 'admin',
-      });
+      };
+      previewMutation.mutate({ request, requestId });
     } catch {
       return;
     }
@@ -526,14 +544,40 @@ export default function MappingsPage() {
 
       {/* Endpoint sync modal */}
       <Modal
-        title="Sync Endpoint Definitions"
+        title={syncPreview ? 'Review Sync Impact' : 'Sync Endpoint Definitions'}
         open={syncVisible}
-        onCancel={closeSyncModal}
-        onOk={() => void handleSyncSubmit()}
-        confirmLoading={syncMutation.isPending}
+        width={syncPreview ? 850 : undefined}
+        onCancel={() => {
+          if (!syncMutation.isPending) closeSyncModal();
+        }}
+        onOk={() => void handlePreviewSubmit()}
+        okText="Preview Impact"
+        confirmLoading={previewMutation.isPending}
         okButtonProps={{ disabled: !swaggerContent || validateMutation.isPending }}
+        closable={!syncMutation.isPending}
+        keyboard={!syncMutation.isPending}
+        footer={syncPreview ? (
+          <Space>
+            <Button onClick={() => setSyncPreview(null)} disabled={syncMutation.isPending}>
+              Back
+            </Button>
+            <Button
+              type="primary"
+              loading={syncMutation.isPending}
+              onClick={() => syncMutation.mutate(syncPreview.request)}
+            >
+              Sync Endpoints
+            </Button>
+          </Space>
+        ) : undefined}
       >
-        <Form form={syncForm} layout="vertical">
+        {syncPreview && <SyncImpactPreview impacts={syncPreview.impacts} />}
+        <Form
+          form={syncForm}
+          layout="vertical"
+          disabled={previewMutation.isPending || syncMutation.isPending}
+          style={syncPreview ? { display: 'none' } : undefined}
+        >
           <Form.Item label="Import Method">
             <Radio.Group
               value={sourceMode}
@@ -592,7 +636,7 @@ export default function MappingsPage() {
             <Select options={VERSION_OPTIONS} disabled />
           </Form.Item>
         </Form>
-        {swaggerContent && (
+        {!syncPreview && swaggerContent && (
           <Tag color="success">Validation passed: {swaggerType}</Tag>
         )}
       </Modal>
