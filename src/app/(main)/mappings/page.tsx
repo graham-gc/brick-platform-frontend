@@ -7,7 +7,7 @@ import { PlusOutlined, SyncOutlined, DeleteOutlined, EditOutlined, UploadOutline
 import type { ColumnsType } from 'antd/es/table';
 import * as api from '@/services/api';
 import { SyncImpactPreview } from '@/features/swagger-sync/SyncImpactPreview';
-import type { AppSwaggerMapping, SwaggerSyncImpact, SyncRequest, ValidateParseRequest } from '@/types';
+import type { AppSwaggerMapping, SwaggerSyncPreviewReport, SyncRequest, ValidateParseRequest } from '@/types';
 
 const ENV_OPTIONS = [
   { label: 'Development', value: 'dev' },
@@ -24,7 +24,7 @@ const VERSION_OPTIONS = [
 
 const MAX_SWAGGER_FILE_SIZE = 5 * 1024 * 1024;
 type SwaggerSourceMode = 'url' | 'file';
-type SyncPreview = { request: SyncRequest; impacts: SwaggerSyncImpact[] };
+type SyncPreview = { request: SyncRequest; report: SwaggerSyncPreviewReport };
 
 export default function MappingsPage() {
   const { message } = AntdApp.useApp();
@@ -162,8 +162,8 @@ export default function MappingsPage() {
 
   const previewMutation = useMutation({
     mutationFn: ({ request }: { request: SyncRequest; requestId: number }) => api.previewSwaggerSync(request),
-    onSuccess: (impacts, { request, requestId }) => {
-      if (requestId === validationRequestId.current) setSyncPreview({ request, impacts });
+    onSuccess: (report, { request, requestId }) => {
+      if (requestId === validationRequestId.current) setSyncPreview({ request, report });
     },
     onError: (err: Error, { requestId }) => {
       if (requestId === validationRequestId.current) message.error(err.message);
@@ -571,7 +571,7 @@ export default function MappingsPage() {
           </Space>
         ) : undefined}
       >
-        {syncPreview && <SyncImpactPreview impacts={syncPreview.impacts} />}
+        {syncPreview && <SyncImpactPreview report={syncPreview.report} />}
         <Form
           form={syncForm}
           layout="vertical"

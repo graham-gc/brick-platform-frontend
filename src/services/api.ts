@@ -19,7 +19,7 @@ import type {
   ValidateParseResult,
   SyncRequest,
   SyncResult,
-  SwaggerSyncImpact,
+  SwaggerSyncPreviewReport,
   FlowUpsertReq,
 } from '@/types';
 
@@ -102,7 +102,7 @@ export const syncEndpoints = (data: SyncRequest) =>
   });
 
 export const previewSwaggerSync = (data: SyncRequest) =>
-  request<SwaggerSyncImpact[]>(`${API_BASE}/sync/preview`, {
+  request<SwaggerSyncPreviewReport>(`${API_BASE}/sync/preview/report`, {
     method: 'POST',
     body: JSON.stringify(data),
   });

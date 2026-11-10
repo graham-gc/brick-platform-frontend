@@ -337,12 +337,33 @@ export interface SwaggerSyncImpact {
   nodeId: number;
   httpMethod: string;
   endpointPath: string;
-  statusCode: string;
+  statusCode: string | null;
   contentType: string | null;
   fieldPath: string;
   referenceType: 'RESPONSE_VARIABLE' | 'ASSERTION';
   variableName: string | null;
   assertionId: number | null;
+}
+
+export interface SwaggerSyncPreviewReport {
+  checkedCount: number;
+  impacts: SwaggerSyncImpact[];
+  unassessed: SwaggerSyncUnassessedReference[];
+}
+
+export interface SwaggerSyncUnassessedReference {
+  reference: SwaggerSyncImpact;
+  contractVersion: 'CURRENT' | 'INCOMING' | null;
+  reason:
+    | 'UNSUPPORTED_JSONPATH'
+    | 'OPERATION_MISSING'
+    | 'RESPONSE_MISSING'
+    | 'NO_DOCUMENTED_RESPONSE'
+    | 'SCHEMA_MISSING'
+    | 'UNRESOLVED_SCHEMA'
+    | 'COMPOSED_SCHEMA'
+    | 'UNSPECIFIED_SCHEMA_SHAPE'
+    | 'PATH_NOT_DECLARED';
 }
 
 // FlowUpsertReq

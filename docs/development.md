@@ -57,7 +57,7 @@ In **Swagger Mappings**, choose **Sync**, validate the updated URL or JSON file,
 
 Open an affected node in a new tab to review its **Response Variables** or **Assertions**. The preview leaves the existing mapping unchanged. Select **Sync Endpoints** to apply the document you reviewed, or go back to change the input.
 
-The check covers simple dot paths and array indices or wildcards in comparable responses. A clean preview does not cover arbitrary JSONPath expressions, type changes, or removed operations or response statuses.
+The preview shows completed comparisons, affected references, and references it could not assess. Missing responses, unresolved or composed schemas, and unsupported JSONPath expressions are shown with a reason and a link to the saved node. A preview with unassessed references is incomplete even if it reports no affected fields. The check covers field removal for simple paths and does not validate type changes.
 
 ## Canvas save and execution
 
