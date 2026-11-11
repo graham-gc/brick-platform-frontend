@@ -42,6 +42,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# project docs
-AGENTS.md
-CLAUDE.md
+# Keep Markdown local, except README files.
+*.[mM][dD]
+![rR][eE][aA][dD][mM][eE].[mM][dD]
+
+# Add exact exceptions below only for Markdown required at runtime.
